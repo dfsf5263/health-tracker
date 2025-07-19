@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  clerkUserId           String                 @unique @map("clerk_user_id")
+  email                 String                 @unique
+  firstName             String?                @map("first_name")
+  lastName              String?                @map("last_name")
+  averageCycleLength    Float?                 @map("average_cycle_length")
+  averagePeriodLength   Float?                 @map("average_period_length")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  cycles                Cycle[]
+  periodDays            PeriodDay[]
+
+  @@map("user")
+}
+
+model Cycle {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @map("user_id") @db.Uuid
+  startDate             DateTime               @map("start_date") @db.Date
+  endDate               DateTime               @map("end_date") @db.Date
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("cycle")
+}
+
+enum Flow {
+  Spotting
+  Medium
+  Heavy
+  SuperHeavy
+}
+
+enum Color {
+  Red
+  Brown
+}
+
+model PeriodDay {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @map("user_id") @db.Uuid
+  date                  DateTime               @db.Date
+  flow                  Flow
+  color                 Color
+  notes                 String?
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@map("period_day")
+}
