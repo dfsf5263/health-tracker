@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { CalendarDayButton, Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Cycle, PeriodDay, Flow, Color } from '@prisma/client'
+import { Cycle, PeriodDay, Color } from '@prisma/client'
 import { PredictionResult } from '@/lib/cycle-prediction'
 
 interface TrackerCalendarProps {
@@ -69,28 +69,14 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
     return (
       periodDays.find((periodDay) => {
         const periodDate = new Date(periodDay.date)
+        // Use UTC methods to avoid timezone conversion issues
         return (
-          periodDate.getFullYear() === day.getFullYear() &&
-          periodDate.getMonth() === day.getMonth() &&
-          periodDate.getDate() === day.getDate()
+          periodDate.getUTCFullYear() === day.getFullYear() &&
+          periodDate.getUTCMonth() === day.getMonth() &&
+          periodDate.getUTCDate() === day.getDate()
         )
       }) || null
     )
-  }
-
-  const getDropletSize = (flow: Flow): string => {
-    switch (flow) {
-      case Flow.Spotting:
-        return 'h-2 w-2'
-      case Flow.Medium:
-        return 'h-3 w-3'
-      case Flow.Heavy:
-        return 'h-4 w-4'
-      case Flow.SuperHeavy:
-        return 'h-5 w-5'
-      default:
-        return 'h-3 w-3'
-    }
   }
 
   const getDropletColor = (color: Color): string => {
@@ -103,6 +89,19 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
         return 'text-red-500 fill-red-500'
     }
   }
+
+  const getSquareColor = (color: Color): string => {
+    switch (color) {
+      case Color.Red:
+        return 'bg-red-500'
+      case Color.Brown:
+        return 'bg-amber-700'
+      default:
+        return 'bg-red-500'
+    }
+  }
+
+  const SquareIcon = ({ className }: { className: string }) => <div className={className} />
 
   const isPredictedPeriodDay = (day: Date) => {
     if (!predictions) return false
@@ -151,15 +150,31 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
                   className={isPredicted ? 'ring-1 ring-red-200 ring-dashed' : ''}
                   {...props}
                 >
-                  {children}
-                  {!modifiers.outside && periodDay && (
-                    <Droplet
-                      className={`${getDropletSize(periodDay.flow)} ${getDropletColor(periodDay.color)}`}
-                    />
-                  )}
-                  {!modifiers.outside && isPredicted && (
-                    <Droplet className="h-3 w-3 text-red-300 opacity-60" />
-                  )}
+                  <div className="flex flex-col items-center w-full h-full pb-2">
+                    <div className="flex-1 flex items-center justify-center">{children}</div>
+                    <div className="flex items-center justify-center gap-0.5 min-h-[1rem]">
+                      {!modifiers.outside && periodDay && (
+                        <>
+                          {/* Desktop: Droplet icons */}
+                          <Droplet
+                            className={`hidden sm:block h-3 w-3 ${getDropletColor(periodDay.color)} mb-1`}
+                          />
+                          {/* Mobile: Square icons */}
+                          <SquareIcon
+                            className={`block sm:hidden rounded h-2 w-2 ${getSquareColor(periodDay.color)} mb-1`}
+                          />
+                        </>
+                      )}
+                      {!modifiers.outside && isPredicted && (
+                        <>
+                          {/* Desktop: Droplet icons */}
+                          <Droplet className="hidden sm:block h-3 w-3 text-red-300 opacity-60 mb-1" />
+                          {/* Mobile: Square icons */}
+                          <SquareIcon className="block sm:hidden rounded h-2 w-2 bg-red-300 opacity-60 mb-1" />
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </CalendarDayButton>
               )
             },

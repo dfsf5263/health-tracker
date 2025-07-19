@@ -69,7 +69,7 @@ export default function AddEventPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          date: data.date.toISOString(),
+          date: `${data.date.getFullYear()}-${String(data.date.getMonth() + 1).padStart(2, '0')}-${String(data.date.getDate()).padStart(2, '0')}`,
           flow: data.flow,
           color: data.color,
           notes: data.notes,
@@ -104,93 +104,117 @@ export default function AddEventPage() {
         >
           <CarouselContent className="h-[calc(100vh-12rem)]">
             {/* Event Type Selection */}
-            <CarouselItem className="flex items-center justify-center">
-              <div className="text-center space-y-6">
-                <h2 className="text-2xl font-semibold">What would you like to track?</h2>
-                <div className="grid gap-4 max-w-md mx-auto">
-                  {eventTypes.map((type) => {
-                    const Icon = type.icon
-                    return (
-                      <Button
-                        key={type.id}
-                        variant="outline"
-                        size="lg"
-                        className="w-full justify-start gap-3 h-auto py-4"
-                        onClick={() => handleEventTypeSelect(type.id)}
-                      >
-                        <Icon className={cn('h-5 w-5', type.color)} />
-                        <span className="text-left">{type.label}</span>
-                      </Button>
-                    )
-                  })}
+            <CarouselItem className="flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="min-h-full flex items-center justify-center">
+                  <div className="text-center space-y-6 py-4">
+                    <h2 className="text-2xl font-semibold">What would you like to track?</h2>
+                    <div className="grid gap-4 max-w-md mx-auto">
+                      {eventTypes.map((type) => {
+                        const Icon = type.icon
+                        return (
+                          <Button
+                            key={type.id}
+                            variant="outline"
+                            size="lg"
+                            className="w-full justify-start gap-3 h-auto py-4"
+                            onClick={() => handleEventTypeSelect(type.id)}
+                          >
+                            <Icon className={cn('h-5 w-5', type.color)} />
+                            <span className="text-left">{type.label}</span>
+                          </Button>
+                        )
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
             </CarouselItem>
 
             {/* Period Form */}
-            <CarouselItem className="flex items-center justify-center">
-              <div className="w-full max-w-md space-y-6">
-                <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-semibold">Track Period Day</h2>
-                  <p className="text-muted-foreground">
-                    Record details about your period for this day
-                  </p>
+            <CarouselItem className="flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="min-h-full flex items-center justify-center">
+                  <div className="w-full max-w-md space-y-6 py-4">
+                    <div className="text-center space-y-2">
+                      <h2 className="text-2xl font-semibold">Track Period Day</h2>
+                      <p className="text-muted-foreground">
+                        Record details about your period for this day
+                      </p>
+                    </div>
+                    <PeriodDayForm
+                      onSubmit={handlePeriodDaySubmit}
+                      submitButtonText="Save Period Day"
+                    />
+                    <Button variant="ghost" className="w-full" onClick={() => api?.scrollTo(0)}>
+                      Back to event types
+                    </Button>
+                  </div>
                 </div>
-                <PeriodDayForm
-                  onSubmit={handlePeriodDaySubmit}
-                  submitButtonText="Save Period Day"
-                />
-                <Button variant="ghost" className="w-full" onClick={() => api?.scrollTo(0)}>
-                  Back to event types
-                </Button>
               </div>
             </CarouselItem>
 
             {/* Birth Control Placeholder */}
-            <CarouselItem className="flex items-center justify-center">
-              <div className="text-center space-y-4">
-                <Pill className="h-16 w-16 mx-auto text-blue-500" />
-                <h2 className="text-2xl font-semibold">Birth Control Tracking</h2>
-                <p className="text-muted-foreground">Coming soon!</p>
-                <Button variant="ghost" onClick={() => api?.scrollTo(0)}>
-                  Back to event types
-                </Button>
+            <CarouselItem className="flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="min-h-full flex items-center justify-center">
+                  <div className="text-center space-y-4 py-4">
+                    <Pill className="h-16 w-16 mx-auto text-blue-500" />
+                    <h2 className="text-2xl font-semibold">Birth Control Tracking</h2>
+                    <p className="text-muted-foreground">Coming soon!</p>
+                    <Button variant="ghost" onClick={() => api?.scrollTo(0)}>
+                      Back to event types
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CarouselItem>
 
             {/* Irregular Physical Event Placeholder */}
-            <CarouselItem className="flex items-center justify-center">
-              <div className="text-center space-y-4">
-                <Activity className="h-16 w-16 mx-auto text-orange-500" />
-                <h2 className="text-2xl font-semibold">Irregular Physical Event</h2>
-                <p className="text-muted-foreground">Coming soon!</p>
-                <Button variant="ghost" onClick={() => api?.scrollTo(0)}>
-                  Back to event types
-                </Button>
+            <CarouselItem className="flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="min-h-full flex items-center justify-center">
+                  <div className="text-center space-y-4 py-4">
+                    <Activity className="h-16 w-16 mx-auto text-orange-500" />
+                    <h2 className="text-2xl font-semibold">Irregular Physical Event</h2>
+                    <p className="text-muted-foreground">Coming soon!</p>
+                    <Button variant="ghost" onClick={() => api?.scrollTo(0)}>
+                      Back to event types
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CarouselItem>
 
             {/* Normal Physical Event Placeholder */}
-            <CarouselItem className="flex items-center justify-center">
-              <div className="text-center space-y-4">
-                <Heart className="h-16 w-16 mx-auto text-green-500" />
-                <h2 className="text-2xl font-semibold">Normal Physical Event</h2>
-                <p className="text-muted-foreground">Coming soon!</p>
-                <Button variant="ghost" onClick={() => api?.scrollTo(0)}>
-                  Back to event types
-                </Button>
+            <CarouselItem className="flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="min-h-full flex items-center justify-center">
+                  <div className="text-center space-y-4 py-4">
+                    <Heart className="h-16 w-16 mx-auto text-green-500" />
+                    <h2 className="text-2xl font-semibold">Normal Physical Event</h2>
+                    <p className="text-muted-foreground">Coming soon!</p>
+                    <Button variant="ghost" onClick={() => api?.scrollTo(0)}>
+                      Back to event types
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CarouselItem>
 
             {/* Migraine Placeholder */}
-            <CarouselItem className="flex items-center justify-center">
-              <div className="text-center space-y-4">
-                <Brain className="h-16 w-16 mx-auto text-purple-500" />
-                <h2 className="text-2xl font-semibold">Migraine Tracking</h2>
-                <p className="text-muted-foreground">Coming soon!</p>
-                <Button variant="ghost" onClick={() => api?.scrollTo(0)}>
-                  Back to event types
-                </Button>
+            <CarouselItem className="flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="min-h-full flex items-center justify-center">
+                  <div className="text-center space-y-4 py-4">
+                    <Brain className="h-16 w-16 mx-auto text-purple-500" />
+                    <h2 className="text-2xl font-semibold">Migraine Tracking</h2>
+                    <p className="text-muted-foreground">Coming soon!</p>
+                    <Button variant="ghost" onClick={() => api?.scrollTo(0)}>
+                      Back to event types
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CarouselItem>
           </CarouselContent>
