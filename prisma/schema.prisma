@@ -26,6 +26,14 @@ model User {
   irregularPhysicalDays  IrregularPhysicalDay[]
   normalPhysicalTypes   NormalPhysicalType[]
   normalPhysicalDays    NormalPhysicalDay[]
+  migraineAttackTypes   MigraineAttackType[]
+  migraineSymptomTypes   MigraineSymptomType[]
+  migraineTriggerTypes   MigraineTriggerType[]
+  migrainePrecognitionTypes   MigrainePrecognitionType[]
+  migraineMedicationTypes   MigraineMedicationType[]
+  migraineReliefTypes   MigraineReliefType[]
+  migraineActivityTypes   MigraineActivityType[]
+  migraines             Migraine[]
 
   @@map("user")
 }
@@ -54,6 +62,12 @@ enum Flow {
 enum Color {
   Red
   Brown
+}
+
+enum PeriodStatus {
+  Yes
+  No
+  Upcoming
 }
 
 model PeriodDay {
@@ -172,4 +186,277 @@ model NormalPhysicalDay {
   @@index([userId])
   @@index([typeId])
   @@map("normal_physical_day")
+}
+
+model MigraineAttackType {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @map("user_id") @db.Uuid
+  name                  String
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  migraineMigraineAttackTypes MigraineMigraineAttackType[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("migraine_attack_type")
+}
+
+model MigraineSymptomType {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @map("user_id") @db.Uuid
+  name                  String
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  migraineMigraineSymptomTypes MigraineMigraineSymptomType[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("migraine_symptom_type")
+}
+
+model MigraineTriggerType {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @map("user_id") @db.Uuid
+  name                  String
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  migraineMigraineTriggerTypes MigraineMigraineTriggerType[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("migraine_trigger_type")
+}
+
+model MigrainePrecognitionType {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @map("user_id") @db.Uuid
+  name                  String
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  migraineMigrainePrecognitionTypes MigraineMigrainePrecognitionType[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("migraine_precognition_type")
+}
+
+model MigraineMedicationType {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @map("user_id") @db.Uuid
+  name                  String
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  migraineMigraineMedicationTypes MigraineMigraineMedicationType[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("migraine_medication_type")
+}
+
+model MigraineReliefType {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @map("user_id") @db.Uuid
+  name                  String
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  migraineMigraineReliefTypes MigraineMigraineReliefType[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("migraine_relief_type")
+}
+
+model MigraineActivityType {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @map("user_id") @db.Uuid
+  name                  String
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  migraineMigraineActivityTypes MigraineMigraineActivityType[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("migraine_activity_type")
+}
+
+model MigraineLocationType {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  name                  String
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  migraineMigraineLocationTypes MigraineMigraineLocationType[]
+
+  @@unique([name])
+  @@map("migraine_location_type")
+}
+
+model Migraine {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @map("user_id") @db.Uuid
+  startDateTime         DateTime               @map("start_date_time")
+  endDateTime           DateTime?              @map("end_date_time")
+  painLevel             Int                    @map("pain_level")
+  geographicLocation    String?                @map("geographic_location")
+  periodStatus          PeriodStatus?          @map("period_status")
+  notes                 String?
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  migraineMigraineAttackTypes       MigraineMigraineAttackType[]
+  migraineMigraineSymptomTypes      MigraineMigraineSymptomType[]
+  migraineMigraineTriggerTypes      MigraineMigraineTriggerType[]
+  migraineMigrainePrecognitionTypes MigraineMigrainePrecognitionType[]
+  migraineMigraineMedicationTypes   MigraineMigraineMedicationType[]
+  migraineMigraineReliefTypes       MigraineMigraineReliefType[]
+  migraineMigraineActivityTypes     MigraineMigraineActivityType[]
+  migraineMigraineLocationTypes     MigraineMigraineLocationType[]
+
+  @@index([userId])
+  @@map("migraine")
+}
+
+model MigraineMigraineAttackType {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  migraineId            String                 @map("migraine_id") @db.Uuid
+  migraineAttackTypeId  String                 @map("migraine_attack_type_id") @db.Uuid
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  migraine              Migraine               @relation(fields: [migraineId], references: [id], onDelete: Cascade)
+  migraineAttackType    MigraineAttackType     @relation(fields: [migraineAttackTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([migraineId, migraineAttackTypeId])
+  @@index([migraineId])
+  @@index([migraineAttackTypeId])
+  @@map("migraine_migraine_attack_type")
+}
+
+model MigraineMigraineSymptomType {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  migraineId            String                 @map("migraine_id") @db.Uuid
+  migraineSymptomTypeId String                 @map("migraine_symptom_type_id") @db.Uuid
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  migraine              Migraine               @relation(fields: [migraineId], references: [id], onDelete: Cascade)
+  migraineSymptomType   MigraineSymptomType    @relation(fields: [migraineSymptomTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([migraineId, migraineSymptomTypeId])
+  @@index([migraineId])
+  @@index([migraineSymptomTypeId])
+  @@map("migraine_migraine_symptom_type")
+}
+
+model MigraineMigraineTriggerType {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  migraineId            String                 @map("migraine_id") @db.Uuid
+  migraineTriggerTypeId String                 @map("migraine_trigger_type_id") @db.Uuid
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  migraine              Migraine               @relation(fields: [migraineId], references: [id], onDelete: Cascade)
+  migraineTriggerType   MigraineTriggerType    @relation(fields: [migraineTriggerTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([migraineId, migraineTriggerTypeId])
+  @@index([migraineId])
+  @@index([migraineTriggerTypeId])
+  @@map("migraine_migraine_trigger_type")
+}
+
+model MigraineMigrainePrecognitionType {
+  id                         String                      @id @default(uuid()) @db.Uuid
+  migraineId                 String                      @map("migraine_id") @db.Uuid
+  migrainePrecognitionTypeId String                      @map("migraine_precognition_type_id") @db.Uuid
+  createdAt                  DateTime                    @default(now()) @map("created_at")
+  updatedAt                  DateTime                    @updatedAt @map("updated_at")
+
+  migraine                   Migraine                    @relation(fields: [migraineId], references: [id], onDelete: Cascade)
+  migrainePrecognitionType   MigrainePrecognitionType    @relation(fields: [migrainePrecognitionTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([migraineId, migrainePrecognitionTypeId])
+  @@index([migraineId])
+  @@index([migrainePrecognitionTypeId])
+  @@map("migraine_migraine_precognition_type")
+}
+
+model MigraineMigraineMedicationType {
+  id                        String                     @id @default(uuid()) @db.Uuid
+  migraineId                String                     @map("migraine_id") @db.Uuid
+  migraineMedicationTypeId  String                     @map("migraine_medication_type_id") @db.Uuid
+  dosageModifier            Float                      @default(1.0) @map("dosage_modifier")
+  createdAt                 DateTime                   @default(now()) @map("created_at")
+  updatedAt                 DateTime                   @updatedAt @map("updated_at")
+
+  migraine                  Migraine                   @relation(fields: [migraineId], references: [id], onDelete: Cascade)
+  migraineMedicationType    MigraineMedicationType     @relation(fields: [migraineMedicationTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([migraineId, migraineMedicationTypeId])
+  @@index([migraineId])
+  @@index([migraineMedicationTypeId])
+  @@map("migraine_migraine_medication_type")
+}
+
+model MigraineMigraineReliefType {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  migraineId            String                 @map("migraine_id") @db.Uuid
+  migraineReliefTypeId  String                 @map("migraine_relief_type_id") @db.Uuid
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  migraine              Migraine               @relation(fields: [migraineId], references: [id], onDelete: Cascade)
+  migraineReliefType    MigraineReliefType     @relation(fields: [migraineReliefTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([migraineId, migraineReliefTypeId])
+  @@index([migraineId])
+  @@index([migraineReliefTypeId])
+  @@map("migraine_migraine_relief_type")
+}
+
+model MigraineMigraineActivityType {
+  id                     String                  @id @default(uuid()) @db.Uuid
+  migraineId             String                  @map("migraine_id") @db.Uuid
+  migraineActivityTypeId String                  @map("migraine_activity_type_id") @db.Uuid
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
+
+  migraine               Migraine                @relation(fields: [migraineId], references: [id], onDelete: Cascade)
+  migraineActivityType   MigraineActivityType    @relation(fields: [migraineActivityTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([migraineId, migraineActivityTypeId])
+  @@index([migraineId])
+  @@index([migraineActivityTypeId])
+  @@map("migraine_migraine_activity_type")
+}
+
+model MigraineMigraineLocationType {
+  id                     String                  @id @default(uuid()) @db.Uuid
+  migraineId             String                  @map("migraine_id") @db.Uuid
+  migraineLocationTypeId String                  @map("migraine_location_type_id") @db.Uuid
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
+
+  migraine               Migraine                @relation(fields: [migraineId], references: [id], onDelete: Cascade)
+  migraineLocationType   MigraineLocationType    @relation(fields: [migraineLocationTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([migraineId, migraineLocationTypeId])
+  @@index([migraineId])
+  @@index([migraineLocationTypeId])
+  @@map("migraine_migraine_location_type")
 }
