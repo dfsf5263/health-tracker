@@ -41,6 +41,12 @@ export function PeriodDayForm({
   const [color, setColor] = useState<Color | undefined>(initialData?.color)
   const [notes, setNotes] = useState(initialData?.notes || '')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [datePickerOpen, setDatePickerOpen] = useState(false)
+
+  const handleDateSelect = (selectedDate: Date | undefined) => {
+    setDate(selectedDate)
+    setDatePickerOpen(false) // Close popover immediately after selection
+  }
 
   const handleSubmit = async () => {
     if (!date || !flow || !color) {
@@ -66,7 +72,7 @@ export function PeriodDayForm({
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="date">Date</Label>
-        <Popover>
+        <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
           <PopoverTrigger asChild>
             <Button
               id="date"
@@ -84,7 +90,7 @@ export function PeriodDayForm({
             <Calendar
               mode="single"
               selected={date}
-              onSelect={setDate}
+              onSelect={handleDateSelect}
               initialFocus
               disabled={(date) => date > new Date()}
             />

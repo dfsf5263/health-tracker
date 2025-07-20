@@ -20,6 +20,8 @@ model User {
 
   cycles                Cycle[]
   periodDays            PeriodDay[]
+  birthControlTypes     BirthControlType[]
+  birthControlDays      BirthControlDay[]
 
   @@map("user")
 }
@@ -65,4 +67,37 @@ model PeriodDay {
   @@unique([userId, date])
   @@index([userId])
   @@map("period_day")
+}
+
+model BirthControlType {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @map("user_id") @db.Uuid
+  name                  String
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  birthControlDays      BirthControlDay[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("birth_control_type")
+}
+
+model BirthControlDay {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @map("user_id") @db.Uuid
+  date                  DateTime               @db.Date
+  typeId                String                 @map("type_id") @db.Uuid
+  notes                 String?
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                  BirthControlType       @relation(fields: [typeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, typeId])
+  @@index([userId])
+  @@index([typeId])
+  @@map("birth_control_day")
 }
