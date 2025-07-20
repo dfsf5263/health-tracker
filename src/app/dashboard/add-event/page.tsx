@@ -11,6 +11,12 @@ import { Droplet, Pill, Activity, Heart, Brain } from 'lucide-react'
 
 type EventType = 'period' | 'birth-control' | 'irregular-physical' | 'normal-physical' | 'migraine'
 
+interface FlowState {
+  currentFlow: EventType | null
+  flowStep: number
+  flowHistory: number[]
+}
+
 const eventTypes = [
   { id: 'period' as EventType, label: 'Period', icon: Droplet, color: 'text-red-500' },
   { id: 'birth-control' as EventType, label: 'Birth Control', icon: Pill, color: 'text-blue-500' },
@@ -41,23 +47,92 @@ export default function AddEventPage() {
   const router = useRouter()
   const [api, setApi] = useState<CarouselApi>()
   const [current, setCurrent] = useState(0)
-  const [count, setCount] = useState(0)
+  const [flowState, setFlowState] = useState<FlowState>({
+    currentFlow: null,
+    flowStep: 0,
+    flowHistory: [0],
+  })
+
+  const resetFlow = React.useCallback(() => {
+    setFlowState({
+      currentFlow: null,
+      flowStep: 0,
+      flowHistory: [0],
+    })
+  }, [])
+
+  const handleFlowBack = React.useCallback(() => {
+    if (current === 0) {
+      // From event selection, go back to dashboard
+      router.push('/dashboard')
+    } else {
+      // From any form, go back to event selection
+      api?.scrollTo(0)
+      setFlowState((prev) => ({
+        ...prev,
+        flowStep: 0,
+        flowHistory: [0],
+      }))
+    }
+  }, [current, api, router])
 
   React.useEffect(() => {
     if (!api) {
       return
     }
 
-    setCount(api.scrollSnapList().length)
     setCurrent(api.selectedScrollSnap())
 
     api.on('select', () => {
-      setCurrent(api.selectedScrollSnap())
+      const newCurrent = api.selectedScrollSnap()
+      setCurrent(newCurrent)
+
+      // Reset flow when returning to event selection
+      if (newCurrent === 0) {
+        resetFlow()
+      }
     })
-  }, [api])
+  }, [api, resetFlow])
+
+  // Browser back button handler
+  React.useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault()
+      handleFlowBack()
+    }
+
+    // Push current state to enable back navigation capture
+    window.history.pushState({}, '', window.location.pathname)
+    window.addEventListener('popstate', handlePopState)
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [current, flowState, handleFlowBack])
+
+  const setCurrentFlow = (eventType: EventType, targetIndex: number) => {
+    setFlowState({
+      currentFlow: eventType,
+      flowStep: 1,
+      flowHistory: [0, targetIndex],
+    })
+  }
+
+  const calculateFlowProgress = (): number => {
+    if (current === 0) {
+      return 0 // Event selection shows no progress
+    }
+
+    if (flowState.currentFlow && current > 0) {
+      return 50 // Any form page shows 50% progress
+    }
+
+    return 0 // Fallback to no progress
+  }
 
   const handleEventTypeSelect = (eventType: EventType) => {
     const index = eventTypeToCarouselIndex[eventType]
+    setCurrentFlow(eventType, index)
     api?.scrollTo(index)
   }
 
@@ -90,7 +165,7 @@ export default function AddEventPage() {
     }
   }
 
-  const progress = count > 0 ? ((current + 1) / count) * 100 : 0
+  const progress = calculateFlowProgress()
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
@@ -146,7 +221,7 @@ export default function AddEventPage() {
                       onSubmit={handlePeriodDaySubmit}
                       submitButtonText="Save Period Day"
                     />
-                    <Button variant="ghost" className="w-full" onClick={() => api?.scrollTo(0)}>
+                    <Button variant="ghost" className="w-full" onClick={handleFlowBack}>
                       Back to event types
                     </Button>
                   </div>
@@ -162,7 +237,7 @@ export default function AddEventPage() {
                     <Pill className="h-16 w-16 mx-auto text-blue-500" />
                     <h2 className="text-2xl font-semibold">Birth Control Tracking</h2>
                     <p className="text-muted-foreground">Coming soon!</p>
-                    <Button variant="ghost" onClick={() => api?.scrollTo(0)}>
+                    <Button variant="ghost" onClick={handleFlowBack}>
                       Back to event types
                     </Button>
                   </div>
@@ -178,7 +253,7 @@ export default function AddEventPage() {
                     <Activity className="h-16 w-16 mx-auto text-orange-500" />
                     <h2 className="text-2xl font-semibold">Irregular Physical Event</h2>
                     <p className="text-muted-foreground">Coming soon!</p>
-                    <Button variant="ghost" onClick={() => api?.scrollTo(0)}>
+                    <Button variant="ghost" onClick={handleFlowBack}>
                       Back to event types
                     </Button>
                   </div>
@@ -194,7 +269,7 @@ export default function AddEventPage() {
                     <Heart className="h-16 w-16 mx-auto text-green-500" />
                     <h2 className="text-2xl font-semibold">Normal Physical Event</h2>
                     <p className="text-muted-foreground">Coming soon!</p>
-                    <Button variant="ghost" onClick={() => api?.scrollTo(0)}>
+                    <Button variant="ghost" onClick={handleFlowBack}>
                       Back to event types
                     </Button>
                   </div>
@@ -210,7 +285,7 @@ export default function AddEventPage() {
                     <Brain className="h-16 w-16 mx-auto text-purple-500" />
                     <h2 className="text-2xl font-semibold">Migraine Tracking</h2>
                     <p className="text-muted-foreground">Coming soon!</p>
-                    <Button variant="ghost" onClick={() => api?.scrollTo(0)}>
+                    <Button variant="ghost" onClick={handleFlowBack}>
                       Back to event types
                     </Button>
                   </div>

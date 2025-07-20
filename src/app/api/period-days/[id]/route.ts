@@ -17,10 +17,11 @@ const updatePeriodDaySchema = z.object({
   notes: z.string().optional().nullable(),
 })
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
+  let id: string | null = null
   let existingPeriodDay: {
     id: string
     date: Date
@@ -47,9 +48,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     body = await request.json()
     const validatedData = updatePeriodDaySchema.parse(body)
 
+    const { id: paramId } = await params
+    id = paramId
     existingPeriodDay = await prisma.periodDay.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: user.id,
       },
     })
@@ -81,7 +84,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const updatedPeriodDay = await prisma.periodDay.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
     })
 
@@ -93,7 +96,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       console.error('Validation error updating period day:', {
         error: error.issues,
         requestBody: body,
-        periodDayId: params.id,
+        periodDayId: id,
         userId,
         userDbId: user?.id,
         existingPeriodDay,
@@ -108,7 +111,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     console.error('Error updating period day:', {
       error,
       requestBody: body,
-      periodDayId: params.id,
+      periodDayId: id,
       userId,
       userDbId: user?.id,
       existingPeriodDay,
@@ -118,9 +121,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   let userId: string | null = null
   let user: { id: string } | null = null
+  let id: string | null = null
   let existingPeriodDay: {
     id: string
     date: Date
@@ -144,9 +151,11 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
+    const { id: paramId } = await params
+    id = paramId
     existingPeriodDay = await prisma.periodDay.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: user.id,
       },
     })
@@ -156,7 +165,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     await prisma.periodDay.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     await syncCycles(user.id)
@@ -165,7 +174,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   } catch (error) {
     console.error('Error deleting period day:', {
       error,
-      periodDayId: params.id,
+      periodDayId: id,
       userId,
       userDbId: user?.id,
       existingPeriodDay,

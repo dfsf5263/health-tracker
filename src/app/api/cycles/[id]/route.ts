@@ -2,7 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId } = await auth()
     if (!userId) {
@@ -17,9 +17,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
+    const { id } = await params
     const cycle = await prisma.cycle.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: user.id,
       },
     })
