@@ -73,6 +73,8 @@ model BirthControlType {
   id                    String                 @id @default(uuid()) @db.Uuid
   userId                String                 @map("user_id") @db.Uuid
   name                  String
+  vaginalRingInsertion  Boolean                @default(false) @map("vaginal_ring_insertion")
+  vaginalRingRemoval    Boolean                @default(false) @map("vaginal_ring_removal")
   createdAt             DateTime               @default(now()) @map("created_at")
   updatedAt             DateTime               @updatedAt @map("updated_at")
 

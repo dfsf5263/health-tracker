@@ -10,6 +10,8 @@ const updateBirthControlTypeSchema = z.object({
     .max(100, 'Name must be 100 characters or less')
     .trim()
     .optional(),
+  vaginalRingInsertion: z.boolean().optional(),
+  vaginalRingRemoval: z.boolean().optional(),
 })
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -88,9 +90,55 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Birth control type not found' }, { status: 404 })
     }
 
+    // Validate vaginal ring insertion uniqueness
+    if (validatedData.vaginalRingInsertion === true) {
+      const existingInsertionType = await prisma.birthControlType.findFirst({
+        where: {
+          userId: user.id,
+          vaginalRingInsertion: true,
+          id: { not: id }, // Exclude current record
+        },
+      })
+
+      if (existingInsertionType) {
+        return NextResponse.json(
+          {
+            error: `Only one birth control type can be designated for vaginal ring insertion. "${existingInsertionType.name}" is already set for insertion.`,
+          },
+          { status: 409 }
+        )
+      }
+    }
+
+    // Validate vaginal ring removal uniqueness
+    if (validatedData.vaginalRingRemoval === true) {
+      const existingRemovalType = await prisma.birthControlType.findFirst({
+        where: {
+          userId: user.id,
+          vaginalRingRemoval: true,
+          id: { not: id }, // Exclude current record
+        },
+      })
+
+      if (existingRemovalType) {
+        return NextResponse.json(
+          {
+            error: `Only one birth control type can be designated for vaginal ring removal. "${existingRemovalType.name}" is already set for removal.`,
+          },
+          { status: 409 }
+        )
+      }
+    }
+
     const updateData: Record<string, unknown> = {}
     if (validatedData.name !== undefined) {
       updateData.name = validatedData.name
+    }
+    if (validatedData.vaginalRingInsertion !== undefined) {
+      updateData.vaginalRingInsertion = validatedData.vaginalRingInsertion
+    }
+    if (validatedData.vaginalRingRemoval !== undefined) {
+      updateData.vaginalRingRemoval = validatedData.vaginalRingRemoval
     }
 
     const updatedBirthControlType = await prisma.birthControlType.update({

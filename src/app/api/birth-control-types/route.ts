@@ -9,6 +9,8 @@ const createBirthControlTypeSchema = z.object({
     .min(1, 'Name is required')
     .max(100, 'Name must be 100 characters or less')
     .trim(),
+  vaginalRingInsertion: z.boolean().optional(),
+  vaginalRingRemoval: z.boolean().optional(),
 })
 
 export async function GET() {
@@ -62,10 +64,50 @@ export async function POST(request: NextRequest) {
     body = await request.json()
     validatedData = createBirthControlTypeSchema.parse(body)
 
+    // Validate vaginal ring insertion uniqueness
+    if (validatedData.vaginalRingInsertion) {
+      const existingInsertionType = await prisma.birthControlType.findFirst({
+        where: {
+          userId: user.id,
+          vaginalRingInsertion: true,
+        },
+      })
+
+      if (existingInsertionType) {
+        return NextResponse.json(
+          {
+            error: `Only one birth control type can be designated for vaginal ring insertion. "${existingInsertionType.name}" is already set for insertion.`,
+          },
+          { status: 409 }
+        )
+      }
+    }
+
+    // Validate vaginal ring removal uniqueness
+    if (validatedData.vaginalRingRemoval) {
+      const existingRemovalType = await prisma.birthControlType.findFirst({
+        where: {
+          userId: user.id,
+          vaginalRingRemoval: true,
+        },
+      })
+
+      if (existingRemovalType) {
+        return NextResponse.json(
+          {
+            error: `Only one birth control type can be designated for vaginal ring removal. "${existingRemovalType.name}" is already set for removal.`,
+          },
+          { status: 409 }
+        )
+      }
+    }
+
     const birthControlType = await prisma.birthControlType.create({
       data: {
         userId: user.id,
         name: validatedData.name,
+        vaginalRingInsertion: validatedData.vaginalRingInsertion || false,
+        vaginalRingRemoval: validatedData.vaginalRingRemoval || false,
       },
     })
 

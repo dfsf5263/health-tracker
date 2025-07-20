@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button'
 import { CalendarDayButton, Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Cycle, PeriodDay, Color } from '@prisma/client'
+import { Cycle, PeriodDay, Color, BirthControlDay, BirthControlType } from '@prisma/client'
 import { PredictionResult } from '@/lib/cycle-prediction'
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog'
 
@@ -30,6 +30,10 @@ interface EventTypeConfig {
   icon: React.ComponentType<{ className?: string }>
   color: string
   implemented: boolean
+}
+
+interface BirthControlDayWithType extends BirthControlDay {
+  type: BirthControlType
 }
 
 const eventTypeConfigs: EventTypeConfig[] = [
@@ -45,7 +49,7 @@ const eventTypeConfigs: EventTypeConfig[] = [
     label: 'Birth Control',
     icon: Pill,
     color: 'text-blue-500',
-    implemented: false,
+    implemented: true,
   },
   {
     type: 'irregular-physical',
@@ -79,6 +83,7 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
   const [date, setDate] = React.useState<Date | undefined>(new Date())
   const [cycles, setCycles] = React.useState<Cycle[]>([])
   const [periodDays, setPeriodDays] = React.useState<PeriodDay[]>([])
+  const [birthControlDays, setBirthControlDays] = React.useState<BirthControlDayWithType[]>([])
   const [predictions, setPredictions] = React.useState<PredictionResult | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
 
@@ -89,10 +94,11 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
   const fetchData = async () => {
     setIsLoading(true)
     try {
-      // Fetch cycles and period days in parallel
-      const [cyclesResponse, periodDaysResponse] = await Promise.all([
+      // Fetch cycles, period days, and birth control days in parallel
+      const [cyclesResponse, periodDaysResponse, birthControlDaysResponse] = await Promise.all([
         fetch('/api/cycles'),
         fetch('/api/period-days'),
+        fetch('/api/birth-control-days'),
       ])
 
       if (cyclesResponse.ok) {
@@ -114,6 +120,11 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
       if (periodDaysResponse.ok) {
         const periodDaysData = await periodDaysResponse.json()
         setPeriodDays(periodDaysData)
+      }
+
+      if (birthControlDaysResponse.ok) {
+        const birthControlDaysData = await birthControlDaysResponse.json()
+        setBirthControlDays(birthControlDaysData)
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -137,6 +148,18 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
     )
   }
 
+  const getBirthControlDays = (day: Date): BirthControlDayWithType[] => {
+    return birthControlDays.filter((bcDay) => {
+      const bcDate = new Date(bcDay.date)
+      // Use UTC methods to avoid timezone conversion issues
+      return (
+        bcDate.getUTCFullYear() === day.getFullYear() &&
+        bcDate.getUTCMonth() === day.getMonth() &&
+        bcDate.getUTCDate() === day.getDate()
+      )
+    })
+  }
+
   const getEventsForDate = (selectedDate: Date | undefined, eventType: EventType) => {
     if (!selectedDate) return []
 
@@ -145,6 +168,7 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
         const periodDay = getPeriodDay(selectedDate)
         return periodDay ? [periodDay] : []
       case 'birth-control':
+        return getBirthControlDays(selectedDate)
       case 'irregular-physical':
       case 'normal-physical':
       case 'migraine':
@@ -216,6 +240,8 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
     const handleEdit = (eventId: string, eventType: EventType) => {
       if (eventType === 'period') {
         router.push(`/dashboard/edit-period-day?id=${eventId}`)
+      } else if (eventType === 'birth-control') {
+        router.push(`/dashboard/edit-birth-control-day?id=${eventId}`)
       } else {
         // For future event types, add their specific edit routes here
         toast.error('Edit functionality for this event type is not implemented yet')
@@ -232,20 +258,25 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
 
       setIsDeleting(true)
       try {
-        const response = await fetch(`/api/period-days/${deletingId}`, {
+        const endpoint =
+          config.type === 'period'
+            ? `/api/period-days/${deletingId}`
+            : `/api/birth-control-days/${deletingId}`
+
+        const response = await fetch(endpoint, {
           method: 'DELETE',
         })
 
         if (!response.ok) {
-          throw new Error('Failed to delete period day')
+          throw new Error(`Failed to delete ${config.label.toLowerCase()}`)
         }
 
-        toast.success('Period day deleted successfully')
+        toast.success(`${config.label} deleted successfully`)
         setDeleteDialogOpen(false)
         fetchData() // Refresh the calendar data
       } catch (error) {
-        console.error('Error deleting period day:', error)
-        toast.error('Failed to delete period day')
+        console.error(`Error deleting ${config.label.toLowerCase()}:`, error)
+        toast.error(`Failed to delete ${config.label.toLowerCase()}`)
       } finally {
         setIsDeleting(false)
         setDeletingId(null)
@@ -313,6 +344,62 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
                   </Card>
                 )
               })}
+            {config.type === 'birth-control' &&
+              events.map((event) => {
+                const bcDay = event as BirthControlDayWithType
+                return (
+                  <Card key={bcDay.id} className="p-3">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1 space-y-1">
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Type: </span>
+                          <span>{bcDay.type.name}</span>
+                        </div>
+                        {(bcDay.type.vaginalRingInsertion || bcDay.type.vaginalRingRemoval) && (
+                          <div className="flex gap-2">
+                            {bcDay.type.vaginalRingInsertion && (
+                              <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                                Ring Insertion
+                              </span>
+                            )}
+                            {bcDay.type.vaginalRingRemoval && (
+                              <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-700/10">
+                                Ring Removal
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {bcDay.notes && (
+                          <div className="text-xs">
+                            <span className="text-muted-foreground">Notes: </span>
+                            <span>{bcDay.notes}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleEdit(bcDay.id, config.type)}
+                        >
+                          <PencilIcon className="h-3 w-3" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleDeleteClick(bcDay.id)}
+                        >
+                          <Trash2Icon className="h-3 w-3" />
+                          <span className="sr-only">Delete</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
           </div>
         ) : (
           <div className="text-xs text-muted-foreground ml-5">
@@ -324,8 +411,8 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
           open={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
           onConfirm={handleDeleteConfirm}
-          title="Delete Period Day"
-          description="Are you sure you want to delete this period day? This action cannot be undone."
+          title={`Delete ${config.label}`}
+          description={`Are you sure you want to delete this ${config.label.toLowerCase()}? This action cannot be undone.`}
           isDeleting={isDeleting}
         />
       </div>
@@ -350,6 +437,7 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
           components={{
             DayButton: ({ children, modifiers, day, ...props }) => {
               const periodDay = getPeriodDay(day.date)
+              const bcDays = getBirthControlDays(day.date)
               const isPredicted = !periodDay && isPredictedPeriodDay(day.date)
 
               return (
@@ -380,6 +468,14 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
                           <Droplet className="hidden sm:block h-3 w-3 text-red-300 opacity-60 mb-1" />
                           {/* Mobile: Square icons */}
                           <SquareIcon className="block sm:hidden rounded h-2 w-2 bg-red-300 opacity-60 mb-1" />
+                        </>
+                      )}
+                      {!modifiers.outside && bcDays.length > 0 && (
+                        <>
+                          {/* Desktop: Pill icon */}
+                          <Pill className="hidden sm:block h-3 w-3 text-blue-500 fill-blue-500 mb-1" />
+                          {/* Mobile: Square icon */}
+                          <SquareIcon className="block sm:hidden rounded h-2 w-2 bg-blue-500 mb-1" />
                         </>
                       )}
                     </div>

@@ -7,6 +7,11 @@ import { Button } from '@/components/ui/button'
 import { Carousel, CarouselContent, CarouselItem, CarouselApi } from '@/components/ui/carousel'
 import { Progress } from '@/components/ui/progress'
 import { PeriodDayForm, PeriodDayFormData } from '@/components/forms/period-day-form'
+import {
+  BirthControlDayForm,
+  BirthControlDayFormData,
+} from '@/components/forms/birth-control-day-form'
+import { BirthControlTypeForm } from '@/components/birth-control-type-form'
 import { Droplet, Pill, Activity, Heart, Brain } from 'lucide-react'
 
 type EventType = 'period' | 'birth-control' | 'irregular-physical' | 'normal-physical' | 'migraine'
@@ -15,6 +20,16 @@ interface FlowState {
   currentFlow: EventType | null
   flowStep: number
   flowHistory: number[]
+}
+
+interface BirthControlType {
+  id: string
+  userId: string
+  name: string
+  vaginalRingInsertion: boolean
+  vaginalRingRemoval: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 const eventTypes = [
@@ -53,12 +68,38 @@ export default function AddEventPage() {
     flowHistory: [0],
   })
 
+  // Birth control state
+  const [birthControlTypes, setBirthControlTypes] = useState<BirthControlType[]>([])
+  const [loadingBirthControlTypes, setLoadingBirthControlTypes] = useState(false)
+  const [birthControlFormOpen, setBirthControlFormOpen] = useState(false)
+  const [selectedBirthControlType, setSelectedBirthControlType] = useState<
+    BirthControlType | undefined
+  >(undefined)
+
   const resetFlow = React.useCallback(() => {
     setFlowState({
       currentFlow: null,
       flowStep: 0,
       flowHistory: [0],
     })
+  }, [])
+
+  // Fetch birth control types when needed
+  const fetchBirthControlTypes = React.useCallback(async () => {
+    setLoadingBirthControlTypes(true)
+    try {
+      const response = await fetch('/api/birth-control-types')
+      if (!response.ok) {
+        throw new Error('Failed to fetch birth control types')
+      }
+      const data = await response.json()
+      setBirthControlTypes(data)
+    } catch (error) {
+      console.error('Error fetching birth control types:', error)
+      toast.error('Failed to fetch birth control types')
+    } finally {
+      setLoadingBirthControlTypes(false)
+    }
   }, [])
 
   const handleFlowBack = React.useCallback(() => {
@@ -134,6 +175,11 @@ export default function AddEventPage() {
     const index = eventTypeToCarouselIndex[eventType]
     setCurrentFlow(eventType, index)
     api?.scrollTo(index)
+
+    // Fetch birth control types when birth control is selected
+    if (eventType === 'birth-control') {
+      fetchBirthControlTypes()
+    }
   }
 
   const handlePeriodDaySubmit = async (data: PeriodDayFormData) => {
@@ -161,6 +207,73 @@ export default function AddEventPage() {
     } catch (error) {
       console.error('Error saving period day:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to save period day')
+      throw error
+    }
+  }
+
+  const handleBirthControlDaySubmit = async (data: BirthControlDayFormData) => {
+    try {
+      const response = await fetch('/api/birth-control-days', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          date: `${data.date.getFullYear()}-${String(data.date.getMonth() + 1).padStart(2, '0')}-${String(data.date.getDate()).padStart(2, '0')}`,
+          typeId: data.typeId,
+          notes: data.notes,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to save birth control day')
+      }
+
+      toast.success('Birth control day saved successfully')
+      router.push('/dashboard')
+    } catch (error) {
+      console.error('Error saving birth control day:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to save birth control day')
+      throw error
+    }
+  }
+
+  const handleCreateNewType = () => {
+    setSelectedBirthControlType(undefined)
+    setBirthControlFormOpen(true)
+  }
+
+  const handleBirthControlTypeFormClose = () => {
+    setBirthControlFormOpen(false)
+    setSelectedBirthControlType(undefined)
+  }
+
+  const handleBirthControlTypeFormSubmit = async (
+    formData: Omit<BirthControlType, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+  ) => {
+    try {
+      const response = await fetch('/api/birth-control-types', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create birth control type')
+      }
+
+      const newType = await response.json()
+      setBirthControlTypes((prev) => [...prev, newType])
+      setBirthControlFormOpen(false)
+      setSelectedBirthControlType(undefined)
+      toast.success('Birth control type created successfully')
+    } catch (error) {
+      console.error('Error creating birth control type:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to create birth control type')
       throw error
     }
   }
@@ -229,15 +342,25 @@ export default function AddEventPage() {
               </div>
             </CarouselItem>
 
-            {/* Birth Control Placeholder */}
+            {/* Birth Control Form */}
             <CarouselItem className="flex flex-col overflow-hidden">
               <div className="flex-1 overflow-y-auto p-4">
                 <div className="min-h-full flex items-center justify-center">
-                  <div className="text-center space-y-4 py-4">
-                    <Pill className="h-16 w-16 mx-auto text-blue-500" />
-                    <h2 className="text-2xl font-semibold">Birth Control Tracking</h2>
-                    <p className="text-muted-foreground">Coming soon!</p>
-                    <Button variant="ghost" onClick={handleFlowBack}>
+                  <div className="w-full max-w-md space-y-6 py-4">
+                    <div className="text-center space-y-2">
+                      <h2 className="text-2xl font-semibold">Track Birth Control</h2>
+                      <p className="text-muted-foreground">
+                        Record details about your birth control for this day
+                      </p>
+                    </div>
+                    <BirthControlDayForm
+                      onSubmit={handleBirthControlDaySubmit}
+                      onCreateNewType={handleCreateNewType}
+                      birthControlTypes={birthControlTypes}
+                      isLoadingTypes={loadingBirthControlTypes}
+                      submitButtonText="Save Birth Control Day"
+                    />
+                    <Button variant="ghost" className="w-full" onClick={handleFlowBack}>
                       Back to event types
                     </Button>
                   </div>
@@ -299,6 +422,13 @@ export default function AddEventPage() {
       <div className="p-4 border-t">
         <Progress value={progress} className="w-full" />
       </div>
+
+      <BirthControlTypeForm
+        birthControlType={selectedBirthControlType}
+        open={birthControlFormOpen}
+        onClose={handleBirthControlTypeFormClose}
+        onSubmit={handleBirthControlTypeFormSubmit}
+      />
     </div>
   )
 }
