@@ -11,7 +11,17 @@ import {
   BirthControlDayForm,
   BirthControlDayFormData,
 } from '@/components/forms/birth-control-day-form'
+import {
+  IrregularPhysicalDayForm,
+  IrregularPhysicalDayFormData,
+} from '@/components/forms/irregular-physical-day-form'
+import {
+  NormalPhysicalDayForm,
+  NormalPhysicalDayFormData,
+} from '@/components/forms/normal-physical-day-form'
 import { BirthControlTypeForm } from '@/components/birth-control-type-form'
+import { IrregularPhysicalTypeForm } from '@/components/irregular-physical-type-form'
+import { NormalPhysicalTypeForm } from '@/components/normal-physical-type-form'
 import { Droplet, Pill, Activity, Heart, Brain } from 'lucide-react'
 
 type EventType = 'period' | 'birth-control' | 'irregular-physical' | 'normal-physical' | 'migraine'
@@ -28,6 +38,22 @@ interface BirthControlType {
   name: string
   vaginalRingInsertion: boolean
   vaginalRingRemoval: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+interface IrregularPhysicalType {
+  id: string
+  userId: string
+  name: string
+  createdAt: string
+  updatedAt: string
+}
+
+interface NormalPhysicalType {
+  id: string
+  userId: string
+  name: string
   createdAt: string
   updatedAt: string
 }
@@ -76,6 +102,22 @@ export default function AddEventPage() {
     BirthControlType | undefined
   >(undefined)
 
+  // Irregular physical state
+  const [irregularPhysicalTypes, setIrregularPhysicalTypes] = useState<IrregularPhysicalType[]>([])
+  const [loadingIrregularPhysicalTypes, setLoadingIrregularPhysicalTypes] = useState(false)
+  const [irregularPhysicalFormOpen, setIrregularPhysicalFormOpen] = useState(false)
+  const [selectedIrregularPhysicalType, setSelectedIrregularPhysicalType] = useState<
+    IrregularPhysicalType | undefined
+  >(undefined)
+
+  // Normal physical state
+  const [normalPhysicalTypes, setNormalPhysicalTypes] = useState<NormalPhysicalType[]>([])
+  const [loadingNormalPhysicalTypes, setLoadingNormalPhysicalTypes] = useState(false)
+  const [normalPhysicalFormOpen, setNormalPhysicalFormOpen] = useState(false)
+  const [selectedNormalPhysicalType, setSelectedNormalPhysicalType] = useState<
+    NormalPhysicalType | undefined
+  >(undefined)
+
   const resetFlow = React.useCallback(() => {
     setFlowState({
       currentFlow: null,
@@ -99,6 +141,42 @@ export default function AddEventPage() {
       toast.error('Failed to fetch birth control types')
     } finally {
       setLoadingBirthControlTypes(false)
+    }
+  }, [])
+
+  // Fetch irregular physical types when needed
+  const fetchIrregularPhysicalTypes = React.useCallback(async () => {
+    setLoadingIrregularPhysicalTypes(true)
+    try {
+      const response = await fetch('/api/irregular-physical-types')
+      if (!response.ok) {
+        throw new Error('Failed to fetch irregular physical types')
+      }
+      const data = await response.json()
+      setIrregularPhysicalTypes(data)
+    } catch (error) {
+      console.error('Error fetching irregular physical types:', error)
+      toast.error('Failed to fetch irregular physical types')
+    } finally {
+      setLoadingIrregularPhysicalTypes(false)
+    }
+  }, [])
+
+  // Fetch normal physical types when needed
+  const fetchNormalPhysicalTypes = React.useCallback(async () => {
+    setLoadingNormalPhysicalTypes(true)
+    try {
+      const response = await fetch('/api/normal-physical-types')
+      if (!response.ok) {
+        throw new Error('Failed to fetch normal physical types')
+      }
+      const data = await response.json()
+      setNormalPhysicalTypes(data)
+    } catch (error) {
+      console.error('Error fetching normal physical types:', error)
+      toast.error('Failed to fetch normal physical types')
+    } finally {
+      setLoadingNormalPhysicalTypes(false)
     }
   }, [])
 
@@ -176,9 +254,13 @@ export default function AddEventPage() {
     setCurrentFlow(eventType, index)
     api?.scrollTo(index)
 
-    // Fetch birth control types when birth control is selected
+    // Fetch types when event type is selected
     if (eventType === 'birth-control') {
       fetchBirthControlTypes()
+    } else if (eventType === 'irregular-physical') {
+      fetchIrregularPhysicalTypes()
+    } else if (eventType === 'normal-physical') {
+      fetchNormalPhysicalTypes()
     }
   }
 
@@ -239,14 +321,34 @@ export default function AddEventPage() {
     }
   }
 
-  const handleCreateNewType = () => {
+  const handleCreateNewBirthControlType = () => {
     setSelectedBirthControlType(undefined)
     setBirthControlFormOpen(true)
+  }
+
+  const handleCreateNewIrregularPhysicalType = () => {
+    setSelectedIrregularPhysicalType(undefined)
+    setIrregularPhysicalFormOpen(true)
+  }
+
+  const handleCreateNewNormalPhysicalType = () => {
+    setSelectedNormalPhysicalType(undefined)
+    setNormalPhysicalFormOpen(true)
   }
 
   const handleBirthControlTypeFormClose = () => {
     setBirthControlFormOpen(false)
     setSelectedBirthControlType(undefined)
+  }
+
+  const handleIrregularPhysicalTypeFormClose = () => {
+    setIrregularPhysicalFormOpen(false)
+    setSelectedIrregularPhysicalType(undefined)
+  }
+
+  const handleNormalPhysicalTypeFormClose = () => {
+    setNormalPhysicalFormOpen(false)
+    setSelectedNormalPhysicalType(undefined)
   }
 
   const handleBirthControlTypeFormSubmit = async (
@@ -274,6 +376,122 @@ export default function AddEventPage() {
     } catch (error) {
       console.error('Error creating birth control type:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to create birth control type')
+      throw error
+    }
+  }
+
+  const handleIrregularPhysicalTypeFormSubmit = async (
+    formData: Omit<IrregularPhysicalType, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+  ) => {
+    try {
+      const response = await fetch('/api/irregular-physical-types', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create irregular physical type')
+      }
+
+      const newType = await response.json()
+      setIrregularPhysicalTypes((prev) => [...prev, newType])
+      setIrregularPhysicalFormOpen(false)
+      setSelectedIrregularPhysicalType(undefined)
+      toast.success('Irregular physical type created successfully')
+    } catch (error) {
+      console.error('Error creating irregular physical type:', error)
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to create irregular physical type'
+      )
+      throw error
+    }
+  }
+
+  const handleNormalPhysicalTypeFormSubmit = async (
+    formData: Omit<NormalPhysicalType, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+  ) => {
+    try {
+      const response = await fetch('/api/normal-physical-types', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create normal physical type')
+      }
+
+      const newType = await response.json()
+      setNormalPhysicalTypes((prev) => [...prev, newType])
+      setNormalPhysicalFormOpen(false)
+      setSelectedNormalPhysicalType(undefined)
+      toast.success('Normal physical type created successfully')
+    } catch (error) {
+      console.error('Error creating normal physical type:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to create normal physical type')
+      throw error
+    }
+  }
+
+  const handleIrregularPhysicalDaySubmit = async (data: IrregularPhysicalDayFormData) => {
+    try {
+      const response = await fetch('/api/irregular-physical-days', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          date: `${data.date.getFullYear()}-${String(data.date.getMonth() + 1).padStart(2, '0')}-${String(data.date.getDate()).padStart(2, '0')}`,
+          typeId: data.typeId,
+          notes: data.notes,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to save irregular physical day')
+      }
+
+      toast.success('Irregular physical day saved successfully')
+      router.push('/dashboard')
+    } catch (error) {
+      console.error('Error saving irregular physical day:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to save irregular physical day')
+      throw error
+    }
+  }
+
+  const handleNormalPhysicalDaySubmit = async (data: NormalPhysicalDayFormData) => {
+    try {
+      const response = await fetch('/api/normal-physical-days', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          date: `${data.date.getFullYear()}-${String(data.date.getMonth() + 1).padStart(2, '0')}-${String(data.date.getDate()).padStart(2, '0')}`,
+          typeId: data.typeId,
+          notes: data.notes,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to save normal physical day')
+      }
+
+      toast.success('Normal physical day saved successfully')
+      router.push('/dashboard')
+    } catch (error) {
+      console.error('Error saving normal physical day:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to save normal physical day')
       throw error
     }
   }
@@ -355,7 +573,7 @@ export default function AddEventPage() {
                     </div>
                     <BirthControlDayForm
                       onSubmit={handleBirthControlDaySubmit}
-                      onCreateNewType={handleCreateNewType}
+                      onCreateNewType={handleCreateNewBirthControlType}
                       birthControlTypes={birthControlTypes}
                       isLoadingTypes={loadingBirthControlTypes}
                       submitButtonText="Save Birth Control Day"
@@ -368,15 +586,25 @@ export default function AddEventPage() {
               </div>
             </CarouselItem>
 
-            {/* Irregular Physical Event Placeholder */}
+            {/* Irregular Physical Event Form */}
             <CarouselItem className="flex flex-col overflow-hidden">
               <div className="flex-1 overflow-y-auto p-4">
                 <div className="min-h-full flex items-center justify-center">
-                  <div className="text-center space-y-4 py-4">
-                    <Activity className="h-16 w-16 mx-auto text-orange-500" />
-                    <h2 className="text-2xl font-semibold">Irregular Physical Event</h2>
-                    <p className="text-muted-foreground">Coming soon!</p>
-                    <Button variant="ghost" onClick={handleFlowBack}>
+                  <div className="w-full max-w-md space-y-6 py-4">
+                    <div className="text-center space-y-2">
+                      <h2 className="text-2xl font-semibold">Track Irregular Physical Event</h2>
+                      <p className="text-muted-foreground">
+                        Record details about your irregular physical event for this day
+                      </p>
+                    </div>
+                    <IrregularPhysicalDayForm
+                      onSubmit={handleIrregularPhysicalDaySubmit}
+                      onCreateNewType={handleCreateNewIrregularPhysicalType}
+                      irregularPhysicalTypes={irregularPhysicalTypes}
+                      isLoadingTypes={loadingIrregularPhysicalTypes}
+                      submitButtonText="Save Irregular Physical Day"
+                    />
+                    <Button variant="ghost" className="w-full" onClick={handleFlowBack}>
                       Back to event types
                     </Button>
                   </div>
@@ -384,15 +612,25 @@ export default function AddEventPage() {
               </div>
             </CarouselItem>
 
-            {/* Normal Physical Event Placeholder */}
+            {/* Normal Physical Event Form */}
             <CarouselItem className="flex flex-col overflow-hidden">
               <div className="flex-1 overflow-y-auto p-4">
                 <div className="min-h-full flex items-center justify-center">
-                  <div className="text-center space-y-4 py-4">
-                    <Heart className="h-16 w-16 mx-auto text-green-500" />
-                    <h2 className="text-2xl font-semibold">Normal Physical Event</h2>
-                    <p className="text-muted-foreground">Coming soon!</p>
-                    <Button variant="ghost" onClick={handleFlowBack}>
+                  <div className="w-full max-w-md space-y-6 py-4">
+                    <div className="text-center space-y-2">
+                      <h2 className="text-2xl font-semibold">Track Normal Physical Event</h2>
+                      <p className="text-muted-foreground">
+                        Record details about your normal physical event for this day
+                      </p>
+                    </div>
+                    <NormalPhysicalDayForm
+                      onSubmit={handleNormalPhysicalDaySubmit}
+                      onCreateNewType={handleCreateNewNormalPhysicalType}
+                      normalPhysicalTypes={normalPhysicalTypes}
+                      isLoadingTypes={loadingNormalPhysicalTypes}
+                      submitButtonText="Save Normal Physical Day"
+                    />
+                    <Button variant="ghost" className="w-full" onClick={handleFlowBack}>
                       Back to event types
                     </Button>
                   </div>
@@ -428,6 +666,20 @@ export default function AddEventPage() {
         open={birthControlFormOpen}
         onClose={handleBirthControlTypeFormClose}
         onSubmit={handleBirthControlTypeFormSubmit}
+      />
+
+      <IrregularPhysicalTypeForm
+        irregularPhysicalType={selectedIrregularPhysicalType}
+        open={irregularPhysicalFormOpen}
+        onClose={handleIrregularPhysicalTypeFormClose}
+        onSubmit={handleIrregularPhysicalTypeFormSubmit}
+      />
+
+      <NormalPhysicalTypeForm
+        normalPhysicalType={selectedNormalPhysicalType}
+        open={normalPhysicalFormOpen}
+        onClose={handleNormalPhysicalTypeFormClose}
+        onSubmit={handleNormalPhysicalTypeFormSubmit}
       />
     </div>
   )

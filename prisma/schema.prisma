@@ -22,6 +22,10 @@ model User {
   periodDays            PeriodDay[]
   birthControlTypes     BirthControlType[]
   birthControlDays      BirthControlDay[]
+  irregularPhysicalTypes IrregularPhysicalType[]
+  irregularPhysicalDays  IrregularPhysicalDay[]
+  normalPhysicalTypes   NormalPhysicalType[]
+  normalPhysicalDays    NormalPhysicalDay[]
 
   @@map("user")
 }
@@ -102,4 +106,70 @@ model BirthControlDay {
   @@index([userId])
   @@index([typeId])
   @@map("birth_control_day")
+}
+
+model IrregularPhysicalType {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @map("user_id") @db.Uuid
+  name                  String
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  irregularPhysicalDays IrregularPhysicalDay[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("irregular_physical_type")
+}
+
+model IrregularPhysicalDay {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @map("user_id") @db.Uuid
+  date                  DateTime               @db.Date
+  typeId                String                 @map("type_id") @db.Uuid
+  notes                 String?
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                  IrregularPhysicalType  @relation(fields: [typeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, typeId])
+  @@index([userId])
+  @@index([typeId])
+  @@map("irregular_physical_day")
+}
+
+model NormalPhysicalType {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @map("user_id") @db.Uuid
+  name                  String
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  normalPhysicalDays    NormalPhysicalDay[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("normal_physical_type")
+}
+
+model NormalPhysicalDay {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  userId                String                 @map("user_id") @db.Uuid
+  date                  DateTime               @db.Date
+  typeId                String                 @map("type_id") @db.Uuid
+  notes                 String?
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                  NormalPhysicalType     @relation(fields: [typeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, typeId])
+  @@index([userId])
+  @@index([typeId])
+  @@map("normal_physical_day")
 }

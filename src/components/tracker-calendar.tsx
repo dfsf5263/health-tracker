@@ -18,7 +18,17 @@ import { Button } from '@/components/ui/button'
 import { CalendarDayButton, Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Cycle, PeriodDay, Color, BirthControlDay, BirthControlType } from '@prisma/client'
+import {
+  Cycle,
+  PeriodDay,
+  Color,
+  BirthControlDay,
+  BirthControlType,
+  IrregularPhysicalDay,
+  IrregularPhysicalType,
+  NormalPhysicalDay,
+  NormalPhysicalType,
+} from '@prisma/client'
 import { PredictionResult } from '@/lib/cycle-prediction'
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog'
 
@@ -34,6 +44,14 @@ interface EventTypeConfig {
 
 interface BirthControlDayWithType extends BirthControlDay {
   type: BirthControlType
+}
+
+interface IrregularPhysicalDayWithType extends IrregularPhysicalDay {
+  type: IrregularPhysicalType
+}
+
+interface NormalPhysicalDayWithType extends NormalPhysicalDay {
+  type: NormalPhysicalType
 }
 
 const eventTypeConfigs: EventTypeConfig[] = [
@@ -56,14 +74,14 @@ const eventTypeConfigs: EventTypeConfig[] = [
     label: 'Irregular Physical',
     icon: Activity,
     color: 'text-orange-500',
-    implemented: false,
+    implemented: true,
   },
   {
     type: 'normal-physical',
     label: 'Normal Physical',
     icon: Heart,
     color: 'text-green-500',
-    implemented: false,
+    implemented: true,
   },
   {
     type: 'migraine',
@@ -84,6 +102,12 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
   const [cycles, setCycles] = React.useState<Cycle[]>([])
   const [periodDays, setPeriodDays] = React.useState<PeriodDay[]>([])
   const [birthControlDays, setBirthControlDays] = React.useState<BirthControlDayWithType[]>([])
+  const [irregularPhysicalDays, setIrregularPhysicalDays] = React.useState<
+    IrregularPhysicalDayWithType[]
+  >([])
+  const [normalPhysicalDays, setNormalPhysicalDays] = React.useState<NormalPhysicalDayWithType[]>(
+    []
+  )
   const [predictions, setPredictions] = React.useState<PredictionResult | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
 
@@ -94,11 +118,19 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
   const fetchData = async () => {
     setIsLoading(true)
     try {
-      // Fetch cycles, period days, and birth control days in parallel
-      const [cyclesResponse, periodDaysResponse, birthControlDaysResponse] = await Promise.all([
+      // Fetch cycles, period days, birth control days, irregular physical days, and normal physical days in parallel
+      const [
+        cyclesResponse,
+        periodDaysResponse,
+        birthControlDaysResponse,
+        irregularPhysicalDaysResponse,
+        normalPhysicalDaysResponse,
+      ] = await Promise.all([
         fetch('/api/cycles'),
         fetch('/api/period-days'),
         fetch('/api/birth-control-days'),
+        fetch('/api/irregular-physical-days'),
+        fetch('/api/normal-physical-days'),
       ])
 
       if (cyclesResponse.ok) {
@@ -125,6 +157,16 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
       if (birthControlDaysResponse.ok) {
         const birthControlDaysData = await birthControlDaysResponse.json()
         setBirthControlDays(birthControlDaysData)
+      }
+
+      if (irregularPhysicalDaysResponse.ok) {
+        const irregularPhysicalDaysData = await irregularPhysicalDaysResponse.json()
+        setIrregularPhysicalDays(irregularPhysicalDaysData)
+      }
+
+      if (normalPhysicalDaysResponse.ok) {
+        const normalPhysicalDaysData = await normalPhysicalDaysResponse.json()
+        setNormalPhysicalDays(normalPhysicalDaysData)
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -160,6 +202,30 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
     })
   }
 
+  const getIrregularPhysicalDays = (day: Date): IrregularPhysicalDayWithType[] => {
+    return irregularPhysicalDays.filter((ipDay) => {
+      const ipDate = new Date(ipDay.date)
+      // Use UTC methods to avoid timezone conversion issues
+      return (
+        ipDate.getUTCFullYear() === day.getFullYear() &&
+        ipDate.getUTCMonth() === day.getMonth() &&
+        ipDate.getUTCDate() === day.getDate()
+      )
+    })
+  }
+
+  const getNormalPhysicalDays = (day: Date): NormalPhysicalDayWithType[] => {
+    return normalPhysicalDays.filter((npDay) => {
+      const npDate = new Date(npDay.date)
+      // Use UTC methods to avoid timezone conversion issues
+      return (
+        npDate.getUTCFullYear() === day.getFullYear() &&
+        npDate.getUTCMonth() === day.getMonth() &&
+        npDate.getUTCDate() === day.getDate()
+      )
+    })
+  }
+
   const getEventsForDate = (selectedDate: Date | undefined, eventType: EventType) => {
     if (!selectedDate) return []
 
@@ -170,7 +236,9 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
       case 'birth-control':
         return getBirthControlDays(selectedDate)
       case 'irregular-physical':
+        return getIrregularPhysicalDays(selectedDate)
       case 'normal-physical':
+        return getNormalPhysicalDays(selectedDate)
       case 'migraine':
         // Placeholder: return empty array for unimplemented types
         return []
@@ -242,6 +310,10 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
         router.push(`/dashboard/edit-period-day?id=${eventId}`)
       } else if (eventType === 'birth-control') {
         router.push(`/dashboard/edit-birth-control-day?id=${eventId}`)
+      } else if (eventType === 'irregular-physical') {
+        router.push(`/dashboard/edit-irregular-physical-day?id=${eventId}`)
+      } else if (eventType === 'normal-physical') {
+        router.push(`/dashboard/edit-normal-physical-day?id=${eventId}`)
       } else {
         // For future event types, add their specific edit routes here
         toast.error('Edit functionality for this event type is not implemented yet')
@@ -258,10 +330,16 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
 
       setIsDeleting(true)
       try {
-        const endpoint =
-          config.type === 'period'
-            ? `/api/period-days/${deletingId}`
-            : `/api/birth-control-days/${deletingId}`
+        let endpoint = ''
+        if (config.type === 'period') {
+          endpoint = `/api/period-days/${deletingId}`
+        } else if (config.type === 'birth-control') {
+          endpoint = `/api/birth-control-days/${deletingId}`
+        } else if (config.type === 'irregular-physical') {
+          endpoint = `/api/irregular-physical-days/${deletingId}`
+        } else if (config.type === 'normal-physical') {
+          endpoint = `/api/normal-physical-days/${deletingId}`
+        }
 
         const response = await fetch(endpoint, {
           method: 'DELETE',
@@ -400,6 +478,90 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
                   </Card>
                 )
               })}
+            {config.type === 'irregular-physical' &&
+              events.map((event) => {
+                const ipDay = event as IrregularPhysicalDayWithType
+                return (
+                  <Card key={ipDay.id} className="p-3">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1 space-y-1">
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Type: </span>
+                          <span>{ipDay.type.name}</span>
+                        </div>
+                        {ipDay.notes && (
+                          <div className="text-xs">
+                            <span className="text-muted-foreground">Notes: </span>
+                            <span>{ipDay.notes}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleEdit(ipDay.id, config.type)}
+                        >
+                          <PencilIcon className="h-3 w-3" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleDeleteClick(ipDay.id)}
+                        >
+                          <Trash2Icon className="h-3 w-3" />
+                          <span className="sr-only">Delete</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
+            {config.type === 'normal-physical' &&
+              events.map((event) => {
+                const npDay = event as NormalPhysicalDayWithType
+                return (
+                  <Card key={npDay.id} className="p-3">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1 space-y-1">
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Type: </span>
+                          <span>{npDay.type.name}</span>
+                        </div>
+                        {npDay.notes && (
+                          <div className="text-xs">
+                            <span className="text-muted-foreground">Notes: </span>
+                            <span>{npDay.notes}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleEdit(npDay.id, config.type)}
+                        >
+                          <PencilIcon className="h-3 w-3" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleDeleteClick(npDay.id)}
+                        >
+                          <Trash2Icon className="h-3 w-3" />
+                          <span className="sr-only">Delete</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
           </div>
         ) : (
           <div className="text-xs text-muted-foreground ml-5">
@@ -438,6 +600,8 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
             DayButton: ({ children, modifiers, day, ...props }) => {
               const periodDay = getPeriodDay(day.date)
               const bcDays = getBirthControlDays(day.date)
+              const ipDays = getIrregularPhysicalDays(day.date)
+              const npDays = getNormalPhysicalDays(day.date)
               const isPredicted = !periodDay && isPredictedPeriodDay(day.date)
 
               return (
@@ -476,6 +640,22 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
                           <Pill className="hidden sm:block h-3 w-3 text-blue-500 fill-blue-500 mb-1" />
                           {/* Mobile: Square icon */}
                           <SquareIcon className="block sm:hidden rounded h-2 w-2 bg-blue-500 mb-1" />
+                        </>
+                      )}
+                      {!modifiers.outside && ipDays.length > 0 && (
+                        <>
+                          {/* Desktop: Activity icon */}
+                          <Activity className="hidden sm:block h-3 w-3 text-orange-500 fill-orange-500 mb-1" />
+                          {/* Mobile: Square icon */}
+                          <SquareIcon className="block sm:hidden rounded h-2 w-2 bg-orange-500 mb-1" />
+                        </>
+                      )}
+                      {!modifiers.outside && npDays.length > 0 && (
+                        <>
+                          {/* Desktop: Heart icon */}
+                          <Heart className="hidden sm:block h-3 w-3 text-green-500 fill-green-500 mb-1" />
+                          {/* Mobile: Square icon */}
+                          <SquareIcon className="block sm:hidden rounded h-2 w-2 bg-green-500 mb-1" />
                         </>
                       )}
                     </div>
