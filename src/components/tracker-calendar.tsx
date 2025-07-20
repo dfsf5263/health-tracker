@@ -2,7 +2,6 @@
 
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
-import { isWithinInterval } from 'date-fns'
 import {
   PlusIcon,
   Droplet,
@@ -14,6 +13,7 @@ import {
   Trash2Icon,
   ChevronDownIcon,
   ChevronRightIcon,
+  RectangleVertical,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -35,6 +35,7 @@ import {
 } from '@prisma/client'
 import { PredictionResult } from '@/lib/cycle-prediction'
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog'
+import { MigraineWithRelationships } from '@/lib/types'
 
 type EventType = 'period' | 'birth-control' | 'irregular-physical' | 'normal-physical' | 'migraine'
 
@@ -56,34 +57,6 @@ interface IrregularPhysicalDayWithType extends IrregularPhysicalDay {
 
 interface NormalPhysicalDayWithType extends NormalPhysicalDay {
   type: NormalPhysicalType
-}
-
-interface MigraineWithRelationships extends Migraine {
-  migraineMigraineAttackTypes: Array<{
-    migraineAttackType: { id: string; name: string }
-  }>
-  migraineMigraineSymptomTypes: Array<{
-    migraineSymptomType: { id: string; name: string }
-  }>
-  migraineMigraineTriggerTypes: Array<{
-    migraineTriggerType: { id: string; name: string }
-  }>
-  migraineMigrainePrecognitionTypes: Array<{
-    migrainePrecognitionType: { id: string; name: string }
-  }>
-  migraineMigraineMedicationTypes: Array<{
-    migraineMedicationType: { id: string; name: string }
-    dosageModifier: number
-  }>
-  migraineMigraineReliefTypes: Array<{
-    migraineReliefType: { id: string; name: string }
-  }>
-  migraineMigraineActivityTypes: Array<{
-    migraineActivityType: { id: string; name: string }
-  }>
-  migraineMigraineLocationTypes: Array<{
-    migraineLocationType: { id: string; name: string }
-  }>
 }
 
 // Separate component for migraine card to properly handle React state
@@ -560,18 +533,34 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
       // If no end date, only show on start date
       if (!migraine.endDateTime) {
         return (
-          startDate.getUTCFullYear() === day.getFullYear() &&
-          startDate.getUTCMonth() === day.getMonth() &&
-          startDate.getUTCDate() === day.getDate()
+          startDate.getFullYear() === day.getFullYear() &&
+          startDate.getMonth() === day.getMonth() &&
+          startDate.getDate() === day.getDate()
         )
       }
 
       // If has end date, show on all days in range
       const endDate = new Date(migraine.endDateTime)
-      return isWithinInterval(day, {
-        start: startDate,
-        end: endDate,
-      })
+
+      // Use day-level comparison to handle same-day migraines properly
+      const dayYear = day.getFullYear()
+      const dayMonth = day.getMonth()
+      const dayDate = day.getDate()
+
+      const startYear = startDate.getFullYear()
+      const startMonth = startDate.getMonth()
+      const startDay = startDate.getDate()
+
+      const endYear = endDate.getFullYear()
+      const endMonth = endDate.getMonth()
+      const endDay = endDate.getDate()
+
+      // Convert to comparable numbers (YYYYMMDD format)
+      const dayNum = dayYear * 10000 + dayMonth * 100 + dayDate
+      const startNum = startYear * 10000 + startMonth * 100 + startDay
+      const endNum = endYear * 10000 + endMonth * 100 + endDay
+
+      return dayNum >= startNum && dayNum <= endNum
     })
   }
 
@@ -606,19 +595,6 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
     }
   }
 
-  const getSquareColor = (color: Color): string => {
-    switch (color) {
-      case Color.Red:
-        return 'bg-red-500'
-      case Color.Brown:
-        return 'bg-amber-700'
-      default:
-        return 'bg-red-500'
-    }
-  }
-
-  const SquareIcon = ({ className }: { className: string }) => <div className={className} />
-
   const isPredictedPeriodDay = (day: Date) => {
     if (!predictions) return false
 
@@ -628,10 +604,25 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
         predictedStart.getTime() + (prediction.periodLength - 1) * 24 * 60 * 60 * 1000
       )
 
-      return isWithinInterval(day, {
-        start: predictedStart,
-        end: predictedEnd,
-      })
+      // Use day-level comparison for predicted period dates
+      const dayYear = day.getFullYear()
+      const dayMonth = day.getMonth()
+      const dayDate = day.getDate()
+
+      const startYear = predictedStart.getFullYear()
+      const startMonth = predictedStart.getMonth()
+      const startDay = predictedStart.getDate()
+
+      const endYear = predictedEnd.getFullYear()
+      const endMonth = predictedEnd.getMonth()
+      const endDay = predictedEnd.getDate()
+
+      // Convert to comparable numbers (YYYYMMDD format)
+      const dayNum = dayYear * 10000 + dayMonth * 100 + dayDate
+      const startNum = startYear * 10000 + startMonth * 100 + startDay
+      const endNum = endYear * 10000 + endMonth * 100 + endDay
+
+      return dayNum >= startNum && dayNum <= endNum
     })
   }
 
@@ -654,6 +645,8 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
     const [isDeleting, setIsDeleting] = React.useState(false)
 
     const handleEdit = (eventId: string, eventType: EventType) => {
+      console.log('Tracker calendar - handling edit:', { eventId, eventType })
+
       if (eventType === 'period') {
         router.push(`/dashboard/edit-period-day?id=${eventId}`)
       } else if (eventType === 'birth-control') {
@@ -662,6 +655,10 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
         router.push(`/dashboard/edit-irregular-physical-day?id=${eventId}`)
       } else if (eventType === 'normal-physical') {
         router.push(`/dashboard/edit-normal-physical-day?id=${eventId}`)
+      } else if (eventType === 'migraine') {
+        const url = `/dashboard/edit-migraine?id=${eventId}`
+        console.log('Navigating to migraine edit:', url)
+        router.push(url)
       } else {
         // For future event types, add their specific edit routes here
         toast.error('Edit functionality for this event type is not implemented yet')
@@ -973,16 +970,16 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
                 >
                   <div className="flex flex-col items-center w-full h-full pb-2">
                     <div className="flex-1 flex items-center justify-center">{children}</div>
-                    <div className="flex items-center justify-center gap-0.5 min-h-[1rem]">
+                    <div className="flex items-center justify-center sm:gap-0.5 min-h-[1rem]">
                       {!modifiers.outside && periodDay && (
                         <>
                           {/* Desktop: Droplet icons */}
                           <Droplet
                             className={`hidden sm:block h-3 w-3 ${getDropletColor(periodDay.color)} mb-1`}
                           />
-                          {/* Mobile: Square icons */}
-                          <SquareIcon
-                            className={`block sm:hidden h-1 w-1 ${getSquareColor(periodDay.color)} mb-1`}
+                          {/* Mobile: Rectangle icons */}
+                          <RectangleVertical
+                            className={`block sm:hidden size-1.5 ${getDropletColor(periodDay.color)}`}
                           />
                         </>
                       )}
@@ -990,40 +987,40 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
                         <>
                           {/* Desktop: Droplet icons */}
                           <Droplet className="hidden sm:block h-3 w-3 text-red-300 opacity-60 mb-1" />
-                          {/* Mobile: Square icons */}
-                          <SquareIcon className="block sm:hidden rounded h-2 w-2 bg-red-300 opacity-60 mb-1" />
+                          {/* Mobile: Rectangle icons */}
+                          <RectangleVertical className="block sm:hidden size-1.5 text-red-300 fill-red-300 opacity-60" />
                         </>
                       )}
                       {!modifiers.outside && bcDays.length > 0 && (
                         <>
                           {/* Desktop: Pill icon */}
                           <Pill className="hidden sm:block h-3 w-3 text-blue-500 fill-blue-500 mb-1" />
-                          {/* Mobile: Square icon */}
-                          <SquareIcon className="block sm:hidden rounded h-2 w-2 bg-blue-500 mb-1" />
+                          {/* Mobile: Rectangle icon */}
+                          <RectangleVertical className="block sm:hidden size-1.5 text-blue-500 fill-blue-500" />
                         </>
                       )}
                       {!modifiers.outside && ipDays.length > 0 && (
                         <>
                           {/* Desktop: Activity icon */}
                           <Activity className="hidden sm:block h-3 w-3 text-orange-500 fill-orange-500 mb-1" />
-                          {/* Mobile: Square icon */}
-                          <SquareIcon className="block sm:hidden rounded h-2 w-2 bg-orange-500 mb-1" />
+                          {/* Mobile: Rectangle icon */}
+                          <RectangleVertical className="block sm:hidden size-1.5 text-orange-500 fill-orange-500" />
                         </>
                       )}
                       {!modifiers.outside && npDays.length > 0 && (
                         <>
                           {/* Desktop: Heart icon */}
                           <Heart className="hidden sm:block h-3 w-3 text-green-500 fill-green-500 mb-1" />
-                          {/* Mobile: Square icon */}
-                          <SquareIcon className="block sm:hidden rounded h-2 w-2 bg-green-500 mb-1" />
+                          {/* Mobile: Rectangle icon */}
+                          <RectangleVertical className="block sm:hidden size-1.5 text-green-500 fill-green-500" />
                         </>
                       )}
                       {!modifiers.outside && migraineDays.length > 0 && (
                         <>
                           {/* Desktop: Brain icon */}
                           <Brain className="hidden sm:block h-3 w-3 text-purple-500 fill-purple-500 mb-1" />
-                          {/* Mobile: Square icon */}
-                          <SquareIcon className="block sm:hidden rounded h-2 w-2 bg-purple-500 mb-1" />
+                          {/* Mobile: Rectangle icon */}
+                          <RectangleVertical className="block sm:hidden size-1.5 text-purple-500 fill-purple-500" />
                         </>
                       )}
                     </div>

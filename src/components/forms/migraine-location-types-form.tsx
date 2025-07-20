@@ -47,6 +47,13 @@ export function MigraineLocationTypesForm({ onContinue, onBack }: MigraineLocati
     fetchLocationTypes()
   }, [fetchLocationTypes])
 
+  // Sync selected location types when form data changes (for edit mode)
+  useEffect(() => {
+    if (formData.locationTypeIds) {
+      setSelectedTypeIds(formData.locationTypeIds)
+    }
+  }, [formData.locationTypeIds])
+
   // Handle toggle selection
   const handleToggle = (typeId: string, checked: boolean) => {
     const newSelectedIds = checked

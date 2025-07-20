@@ -50,6 +50,7 @@ export function MigraineEndDateTimeForm({ onContinue, onBack }: MigraineEndDateT
     if (formData.endDateTime) {
       const time = formData.endDateTime.toTimeString().slice(0, 5)
       setSelectedTime(time)
+      setDate(formData.endDateTime) // Also sync the date state
     } else if (formData.startDateTime && !date) {
       // Default to start date if no end date selected yet
       setDate(formData.startDateTime)
@@ -66,12 +67,28 @@ export function MigraineEndDateTimeForm({ onContinue, onBack }: MigraineEndDateT
     setDate(newDate)
     setDateDrawerOpen(false)
     setValidationError(null)
+    
+    // Update form context immediately if both date and time are available
+    if (newDate && selectedTime) {
+      const [hours, minutes] = selectedTime.split(':').map(Number)
+      const dateTime = new Date(newDate)
+      dateTime.setHours(hours, minutes, 0, 0)
+      updateFormData({ endDateTime: dateTime })
+    }
   }
 
   const handleTimeSelect = (timeValue: string) => {
     setSelectedTime(timeValue)
     setTimeDrawerOpen(false)
     setValidationError(null)
+    
+    // Update form context immediately if both date and time are available
+    if (date && timeValue) {
+      const [hours, minutes] = timeValue.split(':').map(Number)
+      const dateTime = new Date(date)
+      dateTime.setHours(hours, minutes, 0, 0)
+      updateFormData({ endDateTime: dateTime })
+    }
   }
 
   const validateDateTime = (endDate: Date, endTime: string): string | null => {

@@ -52,6 +52,13 @@ export function MigraineTriggerTypesForm({ onContinue, onBack }: MigraineTrigger
     fetchTriggerTypes()
   }, [fetchTriggerTypes])
 
+  // Sync selected trigger types when form data changes (for edit mode)
+  useEffect(() => {
+    if (formData.triggerTypeIds) {
+      setSelectedTypeIds(formData.triggerTypeIds)
+    }
+  }, [formData.triggerTypeIds])
+
   // Handle toggle selection
   const handleToggle = (typeId: string, checked: boolean) => {
     const newSelectedIds = checked

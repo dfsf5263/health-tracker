@@ -59,6 +59,13 @@ export function MigrainePrecognitionTypesForm({
     fetchPrecognitionTypes()
   }, [fetchPrecognitionTypes])
 
+  // Sync selected precognition types when form data changes (for edit mode)
+  useEffect(() => {
+    if (formData.precognitionTypeIds) {
+      setSelectedTypeIds(formData.precognitionTypeIds)
+    }
+  }, [formData.precognitionTypeIds])
+
   // Handle toggle selection
   const handleToggle = (typeId: string, checked: boolean) => {
     const newSelectedIds = checked

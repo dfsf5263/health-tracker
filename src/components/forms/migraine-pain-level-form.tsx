@@ -17,17 +17,10 @@ export function MigrainePainLevelForm({ onContinue, onBack }: MigrainePainLevelF
 
   // Initialize from existing form data
   useEffect(() => {
-    if (formData.painLevel) {
+    if (formData.painLevel !== undefined) {
       setPainLevel(formData.painLevel)
     }
   }, [formData.painLevel])
-
-  // Initialize form data with default value if not set
-  useEffect(() => {
-    if (formData.painLevel === undefined) {
-      updateFormData({ painLevel: 5 })
-    }
-  }, [formData.painLevel, updateFormData])
 
   const handleSliderChange = (value: number[]) => {
     const newPainLevel = value[0]

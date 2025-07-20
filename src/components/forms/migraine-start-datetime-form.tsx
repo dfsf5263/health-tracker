@@ -52,14 +52,37 @@ export function MigraineStartDateTimeForm({ onContinue, onBack }: MigraineStartD
     }
   }, [formData.startDateTime])
 
+  // Initialize date from existing formData
+  useEffect(() => {
+    if (formData.startDateTime) {
+      setDate(formData.startDateTime)
+    }
+  }, [formData.startDateTime])
+
   const handleDateSelect = (newDate: Date | undefined) => {
     setDate(newDate)
     setDateDrawerOpen(false)
+    
+    // Update form context immediately if both date and time are available
+    if (newDate && selectedTime) {
+      const [hours, minutes] = selectedTime.split(':').map(Number)
+      const dateTime = new Date(newDate)
+      dateTime.setHours(hours, minutes, 0, 0)
+      updateFormData({ startDateTime: dateTime })
+    }
   }
 
   const handleTimeSelect = (timeValue: string) => {
     setSelectedTime(timeValue)
     setTimeDrawerOpen(false)
+    
+    // Update form context immediately if both date and time are available
+    if (date && timeValue) {
+      const [hours, minutes] = timeValue.split(':').map(Number)
+      const dateTime = new Date(date)
+      dateTime.setHours(hours, minutes, 0, 0)
+      updateFormData({ startDateTime: dateTime })
+    }
   }
 
   const handleContinue = () => {

@@ -52,6 +52,13 @@ export function MigraineAttackTypesForm({ onContinue, onBack }: MigraineAttackTy
     fetchAttackTypes()
   }, [fetchAttackTypes])
 
+  // Sync selected attack types when form data changes (for edit mode)
+  useEffect(() => {
+    if (formData.attackTypeIds) {
+      setSelectedTypeIds(formData.attackTypeIds)
+    }
+  }, [formData.attackTypeIds])
+
   // Handle toggle selection
   const handleToggle = (typeId: string, checked: boolean) => {
     const newSelectedIds = checked

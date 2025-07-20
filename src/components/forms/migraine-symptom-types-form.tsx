@@ -52,6 +52,13 @@ export function MigraineSymptomTypesForm({ onContinue, onBack }: MigraineSymptom
     fetchSymptomTypes()
   }, [fetchSymptomTypes])
 
+  // Sync selected symptom types when form data changes (for edit mode)
+  useEffect(() => {
+    if (formData.symptomTypeIds) {
+      setSelectedTypeIds(formData.symptomTypeIds)
+    }
+  }, [formData.symptomTypeIds])
+
   // Handle toggle selection
   const handleToggle = (typeId: string, checked: boolean) => {
     const newSelectedIds = checked

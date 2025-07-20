@@ -54,6 +54,13 @@ export function MigraineActivityTypesForm({ onContinue, onBack }: MigraineActivi
     fetchActivityTypes()
   }, [fetchActivityTypes])
 
+  // Sync selected activity types when form data changes (for edit mode)
+  useEffect(() => {
+    if (formData.activityTypeIds) {
+      setSelectedTypeIds(formData.activityTypeIds)
+    }
+  }, [formData.activityTypeIds])
+
   // Handle toggle selection
   const handleToggle = (typeId: string, checked: boolean) => {
     const newSelectedIds = checked

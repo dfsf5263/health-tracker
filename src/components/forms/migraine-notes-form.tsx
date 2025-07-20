@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -10,16 +10,40 @@ import { toast } from 'sonner'
 
 interface MigraineNotesFormProps {
   onBack?: () => void
+  isEditMode?: boolean
+  migraineId?: string
 }
 
-export function MigraineNotesForm({ onBack }: MigraineNotesFormProps) {
+export function MigraineNotesForm({
+  onBack,
+  isEditMode = false,
+  migraineId,
+}: MigraineNotesFormProps) {
   const router = useRouter()
   const { formData, updateFormData } = useMigraineForm()
   const [geographicLocation, setGeographicLocation] = useState(formData.geographicLocation || '')
   const [notes, setNotes] = useState(formData.notes || '')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Sync form fields when form data changes (for edit mode)
+  useEffect(() => {
+    if (formData.geographicLocation) {
+      setGeographicLocation(formData.geographicLocation)
+    }
+  }, [formData.geographicLocation])
+
+  useEffect(() => {
+    if (formData.notes) {
+      setNotes(formData.notes)
+    }
+  }, [formData.notes])
+
   const handleSubmit = async () => {
+    if (isEditMode && !migraineId) {
+      toast.error('Invalid migraine ID for editing')
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -45,6 +69,14 @@ export function MigraineNotesForm({ onBack }: MigraineNotesFormProps) {
         medicationData: formData.medicationData || [],
       }
 
+      // Debug logging to trace form data values
+      console.log('=== SAVE DEBUG ===')
+      console.log('formData.endDateTime:', formData.endDateTime)
+      console.log('migraineData.endDateTime:', migraineData.endDateTime)
+      console.log('Complete formData:', formData)
+      console.log('Complete migraineData:', migraineData)
+      console.log('===================')
+
       // Validate required fields
       if (!migraineData.startDateTime) {
         toast.error('Start date and time are required')
@@ -56,8 +88,11 @@ export function MigraineNotesForm({ onBack }: MigraineNotesFormProps) {
         return
       }
 
-      const response = await fetch('/api/migraines', {
-        method: 'POST',
+      const url = isEditMode ? `/api/migraines/${migraineId}` : '/api/migraines'
+      const method = isEditMode ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -66,14 +101,18 @@ export function MigraineNotesForm({ onBack }: MigraineNotesFormProps) {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to save migraine')
+        throw new Error(errorData.error || `Failed to ${isEditMode ? 'update' : 'save'} migraine`)
       }
 
-      toast.success('Migraine saved successfully')
+      toast.success(`Migraine ${isEditMode ? 'updated' : 'saved'} successfully`)
       router.push('/dashboard')
     } catch (error) {
-      console.error('Error saving migraine:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to save migraine')
+      console.error(`Error ${isEditMode ? 'updating' : 'saving'} migraine:`, error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : `Failed to ${isEditMode ? 'update' : 'save'} migraine`
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -93,7 +132,11 @@ export function MigraineNotesForm({ onBack }: MigraineNotesFormProps) {
     <div className="w-full max-w-md space-y-6 py-4">
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-semibold">Additional Details</h2>
-        <p className="text-muted-foreground">Add any additional information about your migraine</p>
+        <p className="text-muted-foreground">
+          {isEditMode
+            ? 'Update any additional information about your migraine'
+            : 'Add any additional information about your migraine'}
+        </p>
       </div>
 
       <div className="space-y-6">
@@ -132,7 +175,13 @@ export function MigraineNotesForm({ onBack }: MigraineNotesFormProps) {
           </Button>
         )}
         <Button onClick={handleSubmit} className="flex-1" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : 'Save Migraine'}
+          {isSubmitting
+            ? isEditMode
+              ? 'Updating...'
+              : 'Saving...'
+            : isEditMode
+              ? 'Update Migraine'
+              : 'Save Migraine'}
         </Button>
       </div>
     </div>

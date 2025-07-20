@@ -52,6 +52,13 @@ export function MigraineReliefTypesForm({ onContinue, onBack }: MigraineReliefTy
     fetchReliefTypes()
   }, [fetchReliefTypes])
 
+  // Sync selected relief types when form data changes (for edit mode)
+  useEffect(() => {
+    if (formData.reliefTypeIds) {
+      setSelectedTypeIds(formData.reliefTypeIds)
+    }
+  }, [formData.reliefTypeIds])
+
   // Handle toggle selection
   const handleToggle = (typeId: string, checked: boolean) => {
     const newSelectedIds = checked
