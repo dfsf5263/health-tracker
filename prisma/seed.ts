@@ -24,8 +24,8 @@ async function main() {
     'Mouth',
     'Left Neck',
     'Right Neck',
-    'Left Base of Skull/Left Back of Head',
-    'Right Base of Skull/Right Back of Head',
+    'Left Base of Skull/Back of Head',
+    'Right Base of Skull/Back of Head',
   ]
 
   console.log('Seeding migraine location types...')

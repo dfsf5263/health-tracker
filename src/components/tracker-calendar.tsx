@@ -12,11 +12,14 @@ import {
   Brain,
   PencilIcon,
   Trash2Icon,
+  ChevronDownIcon,
+  ChevronRightIcon,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { CalendarDayButton, Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import {
   Cycle,
@@ -28,6 +31,7 @@ import {
   IrregularPhysicalType,
   NormalPhysicalDay,
   NormalPhysicalType,
+  Migraine,
 } from '@prisma/client'
 import { PredictionResult } from '@/lib/cycle-prediction'
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog'
@@ -52,6 +56,321 @@ interface IrregularPhysicalDayWithType extends IrregularPhysicalDay {
 
 interface NormalPhysicalDayWithType extends NormalPhysicalDay {
   type: NormalPhysicalType
+}
+
+interface MigraineWithRelationships extends Migraine {
+  migraineMigraineAttackTypes: Array<{
+    migraineAttackType: { id: string; name: string }
+  }>
+  migraineMigraineSymptomTypes: Array<{
+    migraineSymptomType: { id: string; name: string }
+  }>
+  migraineMigraineTriggerTypes: Array<{
+    migraineTriggerType: { id: string; name: string }
+  }>
+  migraineMigrainePrecognitionTypes: Array<{
+    migrainePrecognitionType: { id: string; name: string }
+  }>
+  migraineMigraineMedicationTypes: Array<{
+    migraineMedicationType: { id: string; name: string }
+    dosageModifier: number
+  }>
+  migraineMigraineReliefTypes: Array<{
+    migraineReliefType: { id: string; name: string }
+  }>
+  migraineMigraineActivityTypes: Array<{
+    migraineActivityType: { id: string; name: string }
+  }>
+  migraineMigraineLocationTypes: Array<{
+    migraineLocationType: { id: string; name: string }
+  }>
+}
+
+// Separate component for migraine card to properly handle React state
+function MigraineCard({
+  migraine,
+  onEdit,
+  onDelete,
+}: {
+  migraine: MigraineWithRelationships
+  onEdit: (id: string) => void
+  onDelete: (id: string) => void
+}) {
+  const [isExpanded, setIsExpanded] = React.useState(false)
+
+  const getPainDescription = (level: number): string => {
+    if (level <= 2) return 'Mild'
+    if (level <= 4) return 'Moderate'
+    if (level <= 6) return 'Noticeable'
+    if (level <= 8) return 'Severe'
+    return 'Extreme'
+  }
+
+  const formatDuration = (start: Date, end?: Date): string => {
+    if (!end) return 'Ongoing'
+    const startDate = start.toLocaleDateString()
+    const endDate = end.toLocaleDateString()
+    return startDate === endDate ? 'Single day' : `${startDate} - ${endDate}`
+  }
+
+  const formatTime = (date: Date): string => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  return (
+    <Card key={migraine.id} className="p-3">
+      <div className="flex justify-between items-start gap-2">
+        <div className="flex-1 space-y-2">
+          {/* Core Info - Always Visible */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">
+                Pain Level: {migraine.painLevel}/10 ({getPainDescription(migraine.painLevel)})
+              </span>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Duration:{' '}
+              {formatDuration(
+                new Date(migraine.startDateTime),
+                migraine.endDateTime ? new Date(migraine.endDateTime) : undefined
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Started: {formatTime(new Date(migraine.startDateTime))}
+              {migraine.endDateTime && ` • Ended: ${formatTime(new Date(migraine.endDateTime))}`}
+            </div>
+          </div>
+
+          {/* Expandable Details */}
+          <div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="h-6 px-2 text-xs"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronDownIcon className="h-3 w-3 mr-1" />
+                  Hide Details
+                </>
+              ) : (
+                <>
+                  <ChevronRightIcon className="h-3 w-3 mr-1" />
+                  Show Details
+                </>
+              )}
+            </Button>
+
+            {isExpanded && (
+              <div className="mt-2 space-y-3 border-t pt-2">
+                {/* Attack Types */}
+                {migraine.migraineMigraineAttackTypes.length > 0 && (
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground">Attack Types:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {migraine.migraineMigraineAttackTypes.map((rel) => (
+                        <Badge
+                          key={rel.migraineAttackType.id}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          {rel.migraineAttackType.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Symptoms */}
+                {migraine.migraineMigraineSymptomTypes.length > 0 && (
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground">Symptoms:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {migraine.migraineMigraineSymptomTypes.map((rel) => (
+                        <Badge
+                          key={rel.migraineSymptomType.id}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          {rel.migraineSymptomType.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Triggers */}
+                {migraine.migraineMigraineTriggerTypes.length > 0 && (
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground">Triggers:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {migraine.migraineMigraineTriggerTypes.map((rel) => (
+                        <Badge
+                          key={rel.migraineTriggerType.id}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          {rel.migraineTriggerType.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Precognitions */}
+                {migraine.migraineMigrainePrecognitionTypes.length > 0 && (
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground">Early Signs:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {migraine.migraineMigrainePrecognitionTypes.map((rel) => (
+                        <Badge
+                          key={rel.migrainePrecognitionType.id}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          {rel.migrainePrecognitionType.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Medications */}
+                {migraine.migraineMigraineMedicationTypes.length > 0 && (
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground">Medications:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {migraine.migraineMigraineMedicationTypes.map((rel) => (
+                        <Badge
+                          key={rel.migraineMedicationType.id}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          {rel.migraineMedicationType.name}
+                          {rel.dosageModifier !== 1 && ` (${rel.dosageModifier}x)`}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Relief Methods */}
+                {migraine.migraineMigraineReliefTypes.length > 0 && (
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Relief Methods:
+                    </span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {migraine.migraineMigraineReliefTypes.map((rel) => (
+                        <Badge
+                          key={rel.migraineReliefType.id}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          {rel.migraineReliefType.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Activity Impact */}
+                {migraine.migraineMigraineActivityTypes.length > 0 && (
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Activity Impact:
+                    </span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {migraine.migraineMigraineActivityTypes.map((rel) => (
+                        <Badge
+                          key={rel.migraineActivityType.id}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          {rel.migraineActivityType.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Pain Locations */}
+                {migraine.migraineMigraineLocationTypes.length > 0 && (
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Pain Locations:
+                    </span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {migraine.migraineMigraineLocationTypes.map((rel) => (
+                        <Badge
+                          key={rel.migraineLocationType.id}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          {rel.migraineLocationType.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Period Status */}
+                {migraine.periodStatus && (
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Period Status:
+                    </span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      <Badge variant="secondary" className="text-xs">
+                        {migraine.periodStatus}
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+
+                {/* Geographic Location */}
+                {migraine.geographicLocation && (
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground">Location:</span>
+                    <span className="text-xs ml-2">{migraine.geographicLocation}</span>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {migraine.notes && (
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground">Notes:</span>
+                    <div className="text-xs mt-1 bg-muted/50 p-2 rounded">{migraine.notes}</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => onEdit(migraine.id)}
+          >
+            <PencilIcon className="h-3 w-3" />
+            <span className="sr-only">Edit</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => onDelete(migraine.id)}
+          >
+            <Trash2Icon className="h-3 w-3" />
+            <span className="sr-only">Delete</span>
+          </Button>
+        </div>
+      </div>
+    </Card>
+  )
 }
 
 const eventTypeConfigs: EventTypeConfig[] = [
@@ -88,7 +407,7 @@ const eventTypeConfigs: EventTypeConfig[] = [
     label: 'Migraine',
     icon: Brain,
     color: 'text-purple-500',
-    implemented: false,
+    implemented: true,
   },
 ]
 
@@ -108,6 +427,7 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
   const [normalPhysicalDays, setNormalPhysicalDays] = React.useState<NormalPhysicalDayWithType[]>(
     []
   )
+  const [migraines, setMigraines] = React.useState<Migraine[]>([])
   const [predictions, setPredictions] = React.useState<PredictionResult | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
 
@@ -118,19 +438,21 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
   const fetchData = async () => {
     setIsLoading(true)
     try {
-      // Fetch cycles, period days, birth control days, irregular physical days, and normal physical days in parallel
+      // Fetch cycles, period days, birth control days, irregular physical days, normal physical days, and migraines in parallel
       const [
         cyclesResponse,
         periodDaysResponse,
         birthControlDaysResponse,
         irregularPhysicalDaysResponse,
         normalPhysicalDaysResponse,
+        migrainesResponse,
       ] = await Promise.all([
         fetch('/api/cycles'),
         fetch('/api/period-days'),
         fetch('/api/birth-control-days'),
         fetch('/api/irregular-physical-days'),
         fetch('/api/normal-physical-days'),
+        fetch('/api/migraines'),
       ])
 
       if (cyclesResponse.ok) {
@@ -167,6 +489,11 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
       if (normalPhysicalDaysResponse.ok) {
         const normalPhysicalDaysData = await normalPhysicalDaysResponse.json()
         setNormalPhysicalDays(normalPhysicalDaysData)
+      }
+
+      if (migrainesResponse.ok) {
+        const migrainesData = await migrainesResponse.json()
+        setMigraines(migrainesData)
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -226,6 +553,28 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
     })
   }
 
+  const getMigraines = (day: Date): Migraine[] => {
+    return migraines.filter((migraine) => {
+      const startDate = new Date(migraine.startDateTime)
+
+      // If no end date, only show on start date
+      if (!migraine.endDateTime) {
+        return (
+          startDate.getUTCFullYear() === day.getFullYear() &&
+          startDate.getUTCMonth() === day.getMonth() &&
+          startDate.getUTCDate() === day.getDate()
+        )
+      }
+
+      // If has end date, show on all days in range
+      const endDate = new Date(migraine.endDateTime)
+      return isWithinInterval(day, {
+        start: startDate,
+        end: endDate,
+      })
+    })
+  }
+
   const getEventsForDate = (selectedDate: Date | undefined, eventType: EventType) => {
     if (!selectedDate) return []
 
@@ -240,8 +589,7 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
       case 'normal-physical':
         return getNormalPhysicalDays(selectedDate)
       case 'migraine':
-        // Placeholder: return empty array for unimplemented types
-        return []
+        return getMigraines(selectedDate)
       default:
         return []
     }
@@ -339,6 +687,8 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
           endpoint = `/api/irregular-physical-days/${deletingId}`
         } else if (config.type === 'normal-physical') {
           endpoint = `/api/normal-physical-days/${deletingId}`
+        } else if (config.type === 'migraine') {
+          endpoint = `/api/migraines/${deletingId}`
         }
 
         const response = await fetch(endpoint, {
@@ -562,6 +912,15 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
                   </Card>
                 )
               })}
+            {config.type === 'migraine' &&
+              events.map((event) => (
+                <MigraineCard
+                  key={event.id}
+                  migraine={event as MigraineWithRelationships}
+                  onEdit={(id) => handleEdit(id, config.type)}
+                  onDelete={handleDeleteClick}
+                />
+              ))}
           </div>
         ) : (
           <div className="text-xs text-muted-foreground ml-5">
@@ -602,6 +961,7 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
               const bcDays = getBirthControlDays(day.date)
               const ipDays = getIrregularPhysicalDays(day.date)
               const npDays = getNormalPhysicalDays(day.date)
+              const migraineDays = getMigraines(day.date)
               const isPredicted = !periodDay && isPredictedPeriodDay(day.date)
 
               return (
@@ -622,7 +982,7 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
                           />
                           {/* Mobile: Square icons */}
                           <SquareIcon
-                            className={`block sm:hidden rounded h-2 w-2 ${getSquareColor(periodDay.color)} mb-1`}
+                            className={`block sm:hidden h-1 w-1 ${getSquareColor(periodDay.color)} mb-1`}
                           />
                         </>
                       )}
@@ -656,6 +1016,14 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
                           <Heart className="hidden sm:block h-3 w-3 text-green-500 fill-green-500 mb-1" />
                           {/* Mobile: Square icon */}
                           <SquareIcon className="block sm:hidden rounded h-2 w-2 bg-green-500 mb-1" />
+                        </>
+                      )}
+                      {!modifiers.outside && migraineDays.length > 0 && (
+                        <>
+                          {/* Desktop: Brain icon */}
+                          <Brain className="hidden sm:block h-3 w-3 text-purple-500 fill-purple-500 mb-1" />
+                          {/* Mobile: Square icon */}
+                          <SquareIcon className="block sm:hidden rounded h-2 w-2 bg-purple-500 mb-1" />
                         </>
                       )}
                     </div>

@@ -7,7 +7,7 @@ Irregular Physical Type
     - Mood Swings
     - Diarrhea
     - Constipation
-    - Sleep Disregulation
+    - Sleep Dysregulation
 Regular Physical Type
     - Sex
     - Exercise
@@ -55,11 +55,11 @@ Migraine Trigger Type
     - Neck Pain
     - Alcohol
     - Sun Exposure/Dehydration
-    - Caffinee
-    - Alergy Reaction
+    - Caffeine
+    - Allergy Reaction
     - Odor/Strong Smell
     - Rebound Headache
-    - Sinusus
+    - Sinus
     - Chocolate
     - Skipped Magnesium
 Migraine Precognition Type
@@ -75,11 +75,11 @@ Migraine Precognition Type
     - Irritability
     - Headache
     - Aura
-    - Prodome Only
+    - Prodrome Only
     - Unusually Energetic
     - Unusually Depressed
     - Confusion
-Migarine Medication Type
+Migraine Medication Type
     - No
     - Zomig 5mg
     - Relpax 20mg
@@ -101,7 +101,7 @@ Migraine Relief Type
     - Stay Indoor
     - Icepack
     - Food
-    - Caffinee
+    - Caffeine
     - Hot Shower
     - Cold Shower
     - Drink Water
@@ -115,7 +115,7 @@ Migraine Activity Type
     - Slower at Work
     - Missed Social Activity
     - Slower at Home
-    - Missed Familiy Time
+    - Missed Family Time
     - Could Not Fall Asleep
     - Woke Up During Sleep
     - No Screen/Phone

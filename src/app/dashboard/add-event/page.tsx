@@ -23,6 +23,21 @@ import { BirthControlTypeForm } from '@/components/birth-control-type-form'
 import { IrregularPhysicalTypeForm } from '@/components/irregular-physical-type-form'
 import { NormalPhysicalTypeForm } from '@/components/normal-physical-type-form'
 import { Droplet, Pill, Activity, Heart, Brain } from 'lucide-react'
+import { MigraineFormProvider, useMigraineForm } from '@/components/forms/migraine-form-provider'
+import { MigraineStartDateTimeForm } from '@/components/forms/migraine-start-datetime-form'
+import { MigraineMigraineover } from '@/components/forms/migraine-migraine-over'
+import { MigraineEndDateTimeForm } from '@/components/forms/migraine-end-datetime-form'
+import { MigraineAttackTypesForm } from '@/components/forms/migraine-attack-types-form'
+import { MigrainePainLevelForm } from '@/components/forms/migraine-pain-level-form'
+import { MigraineSymptomTypesForm } from '@/components/forms/migraine-symptom-types-form'
+import { MigraineTriggerTypesForm } from '@/components/forms/migraine-trigger-types-form'
+import { MigrainePeriodStatusForm } from '@/components/forms/migraine-period-status-form'
+import { MigraineMedicationTypesForm } from '@/components/forms/migraine-medication-types-form'
+import { MigrainePrecognitionTypesForm } from '@/components/forms/migraine-precognition-types-form'
+import { MigraineReliefTypesForm } from '@/components/forms/migraine-relief-types-form'
+import { MigraineActivityTypesForm } from '@/components/forms/migraine-activity-types-form'
+import { MigraineLocationTypesForm } from '@/components/forms/migraine-location-types-form'
+import { MigraineNotesForm } from '@/components/forms/migraine-notes-form'
 
 type EventType = 'period' | 'birth-control' | 'irregular-physical' | 'normal-physical' | 'migraine'
 
@@ -81,7 +96,29 @@ const eventTypeToCarouselIndex: Record<EventType, number> = {
   'birth-control': 2,
   'irregular-physical': 3,
   'normal-physical': 4,
-  migraine: 5,
+  migraine: 5, // First migraine step (start date/time)
+}
+
+// Helper component to access migraine form context for conditional navigation
+function MigraineAttackTypesFormWrapper({ api }: { api: CarouselApi | undefined }) {
+  const { formData } = useMigraineForm()
+
+  const handleBack = () => {
+    if (formData.isOver === true) {
+      // Go back to end date/time step
+      api?.scrollTo(7)
+    } else {
+      // Go back to migraine status step (skipping end date/time)
+      api?.scrollTo(6)
+    }
+  }
+
+  const handleContinue = () => {
+    // Continue to pain level step
+    api?.scrollTo(9) // Index 9 is the pain level step
+  }
+
+  return <MigraineAttackTypesForm onBack={handleBack} onContinue={handleContinue} />
 }
 
 export default function AddEventPage() {
@@ -501,160 +538,386 @@ export default function AddEventPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       <div className="flex-1 flex items-center justify-center p-4">
-        <Carousel
-          setApi={setApi}
-          className="w-full max-w-2xl"
-          opts={{
-            watchDrag: false,
-          }}
-        >
-          <CarouselContent className="h-[calc(100vh-12rem)]">
-            {/* Event Type Selection */}
-            <CarouselItem className="flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="min-h-full flex items-center justify-center">
-                  <div className="text-center space-y-6 py-4">
-                    <h2 className="text-2xl font-semibold">What would you like to track?</h2>
-                    <div className="grid gap-4 max-w-md mx-auto">
-                      {eventTypes.map((type) => {
-                        const Icon = type.icon
-                        return (
-                          <Button
-                            key={type.id}
-                            variant="outline"
-                            size="lg"
-                            className="w-full justify-start gap-3 h-auto py-4"
-                            onClick={() => handleEventTypeSelect(type.id)}
-                          >
-                            <Icon className={cn('h-5 w-5', type.color)} />
-                            <span className="text-left">{type.label}</span>
-                          </Button>
-                        )
-                      })}
+        <MigraineFormProvider>
+          <Carousel
+            setApi={setApi}
+            className="w-full max-w-2xl"
+            opts={{
+              watchDrag: false,
+            }}
+          >
+            <CarouselContent className="h-[calc(100vh-12rem)]">
+              {/* Event Type Selection */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <div className="text-center space-y-6 py-4">
+                      <h2 className="text-2xl font-semibold">What would you like to track?</h2>
+                      <div className="grid gap-4 max-w-md mx-auto">
+                        {eventTypes.map((type) => {
+                          const Icon = type.icon
+                          return (
+                            <Button
+                              key={type.id}
+                              variant="outline"
+                              size="lg"
+                              className="w-full justify-start gap-3 h-auto py-4"
+                              onClick={() => handleEventTypeSelect(type.id)}
+                            >
+                              <Icon className={cn('h-5 w-5', type.color)} />
+                              <span className="text-left">{type.label}</span>
+                            </Button>
+                          )
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </CarouselItem>
+              </CarouselItem>
 
-            {/* Period Form */}
-            <CarouselItem className="flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="min-h-full flex items-center justify-center">
-                  <div className="w-full max-w-md space-y-6 py-4">
-                    <div className="text-center space-y-2">
-                      <h2 className="text-2xl font-semibold">Track Period Day</h2>
-                      <p className="text-muted-foreground">
-                        Record details about your period for this day
-                      </p>
+              {/* Period Form */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <div className="w-full max-w-md space-y-6 py-4">
+                      <div className="text-center space-y-2">
+                        <h2 className="text-2xl font-semibold">Track Period Day</h2>
+                        <p className="text-muted-foreground">
+                          Record details about your period for this day
+                        </p>
+                      </div>
+                      <PeriodDayForm
+                        onSubmit={handlePeriodDaySubmit}
+                        submitButtonText="Save Period Day"
+                      />
+                      <Button variant="ghost" className="w-full" onClick={handleFlowBack}>
+                        Back to event types
+                      </Button>
                     </div>
-                    <PeriodDayForm
-                      onSubmit={handlePeriodDaySubmit}
-                      submitButtonText="Save Period Day"
+                  </div>
+                </div>
+              </CarouselItem>
+
+              {/* Birth Control Form */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <div className="w-full max-w-md space-y-6 py-4">
+                      <div className="text-center space-y-2">
+                        <h2 className="text-2xl font-semibold">Track Birth Control</h2>
+                        <p className="text-muted-foreground">
+                          Record details about your birth control for this day
+                        </p>
+                      </div>
+                      <BirthControlDayForm
+                        onSubmit={handleBirthControlDaySubmit}
+                        onCreateNewType={handleCreateNewBirthControlType}
+                        birthControlTypes={birthControlTypes}
+                        isLoadingTypes={loadingBirthControlTypes}
+                        submitButtonText="Save Birth Control Day"
+                      />
+                      <Button variant="ghost" className="w-full" onClick={handleFlowBack}>
+                        Back to event types
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CarouselItem>
+
+              {/* Irregular Physical Event Form */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <div className="w-full max-w-md space-y-6 py-4">
+                      <div className="text-center space-y-2">
+                        <h2 className="text-2xl font-semibold">Track Irregular Physical Event</h2>
+                        <p className="text-muted-foreground">
+                          Record details about your irregular physical event for this day
+                        </p>
+                      </div>
+                      <IrregularPhysicalDayForm
+                        onSubmit={handleIrregularPhysicalDaySubmit}
+                        onCreateNewType={handleCreateNewIrregularPhysicalType}
+                        irregularPhysicalTypes={irregularPhysicalTypes}
+                        isLoadingTypes={loadingIrregularPhysicalTypes}
+                        submitButtonText="Save Irregular Physical Day"
+                      />
+                      <Button variant="ghost" className="w-full" onClick={handleFlowBack}>
+                        Back to event types
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CarouselItem>
+
+              {/* Normal Physical Event Form */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <div className="w-full max-w-md space-y-6 py-4">
+                      <div className="text-center space-y-2">
+                        <h2 className="text-2xl font-semibold">Track Normal Physical Event</h2>
+                        <p className="text-muted-foreground">
+                          Record details about your normal physical event for this day
+                        </p>
+                      </div>
+                      <NormalPhysicalDayForm
+                        onSubmit={handleNormalPhysicalDaySubmit}
+                        onCreateNewType={handleCreateNewNormalPhysicalType}
+                        normalPhysicalTypes={normalPhysicalTypes}
+                        isLoadingTypes={loadingNormalPhysicalTypes}
+                        submitButtonText="Save Normal Physical Day"
+                      />
+                      <Button variant="ghost" className="w-full" onClick={handleFlowBack}>
+                        Back to event types
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CarouselItem>
+
+              {/* Migraine Step 1: Start Date/Time */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <MigraineStartDateTimeForm
+                      onBack={handleFlowBack}
+                      onContinue={() => {
+                        // Advance to next migraine step
+                        api?.scrollTo(6) // Index 6 will be the "Is migraine over?" step
+                      }}
                     />
-                    <Button variant="ghost" className="w-full" onClick={handleFlowBack}>
-                      Back to event types
-                    </Button>
                   </div>
                 </div>
-              </div>
-            </CarouselItem>
+              </CarouselItem>
 
-            {/* Birth Control Form */}
-            <CarouselItem className="flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="min-h-full flex items-center justify-center">
-                  <div className="w-full max-w-md space-y-6 py-4">
-                    <div className="text-center space-y-2">
-                      <h2 className="text-2xl font-semibold">Track Birth Control</h2>
-                      <p className="text-muted-foreground">
-                        Record details about your birth control for this day
-                      </p>
-                    </div>
-                    <BirthControlDayForm
-                      onSubmit={handleBirthControlDaySubmit}
-                      onCreateNewType={handleCreateNewBirthControlType}
-                      birthControlTypes={birthControlTypes}
-                      isLoadingTypes={loadingBirthControlTypes}
-                      submitButtonText="Save Birth Control Day"
+              {/* Migraine Step 2: Is Migraine Over? */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <MigraineMigraineover
+                      onBack={() => {
+                        // Go back to migraine start time step
+                        api?.scrollTo(5)
+                      }}
+                      onYes={() => {
+                        // Migraine is over - go to end date/time collection
+                        api?.scrollTo(7) // Index 7 is the end date/time step
+                      }}
+                      onNo={() => {
+                        // Migraine is ongoing - skip end time and go to attack types
+                        api?.scrollTo(8) // Index 8 is the attack types step
+                      }}
                     />
-                    <Button variant="ghost" className="w-full" onClick={handleFlowBack}>
-                      Back to event types
-                    </Button>
                   </div>
                 </div>
-              </div>
-            </CarouselItem>
+              </CarouselItem>
 
-            {/* Irregular Physical Event Form */}
-            <CarouselItem className="flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="min-h-full flex items-center justify-center">
-                  <div className="w-full max-w-md space-y-6 py-4">
-                    <div className="text-center space-y-2">
-                      <h2 className="text-2xl font-semibold">Track Irregular Physical Event</h2>
-                      <p className="text-muted-foreground">
-                        Record details about your irregular physical event for this day
-                      </p>
-                    </div>
-                    <IrregularPhysicalDayForm
-                      onSubmit={handleIrregularPhysicalDaySubmit}
-                      onCreateNewType={handleCreateNewIrregularPhysicalType}
-                      irregularPhysicalTypes={irregularPhysicalTypes}
-                      isLoadingTypes={loadingIrregularPhysicalTypes}
-                      submitButtonText="Save Irregular Physical Day"
+              {/* Migraine Step 3: End Date/Time */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <MigraineEndDateTimeForm
+                      onBack={() => {
+                        // Go back to migraine status step
+                        api?.scrollTo(6)
+                      }}
+                      onContinue={() => {
+                        // Continue to attack types selection
+                        api?.scrollTo(8) // Index 8 is the attack types step
+                      }}
                     />
-                    <Button variant="ghost" className="w-full" onClick={handleFlowBack}>
-                      Back to event types
-                    </Button>
                   </div>
                 </div>
-              </div>
-            </CarouselItem>
+              </CarouselItem>
 
-            {/* Normal Physical Event Form */}
-            <CarouselItem className="flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="min-h-full flex items-center justify-center">
-                  <div className="w-full max-w-md space-y-6 py-4">
-                    <div className="text-center space-y-2">
-                      <h2 className="text-2xl font-semibold">Track Normal Physical Event</h2>
-                      <p className="text-muted-foreground">
-                        Record details about your normal physical event for this day
-                      </p>
-                    </div>
-                    <NormalPhysicalDayForm
-                      onSubmit={handleNormalPhysicalDaySubmit}
-                      onCreateNewType={handleCreateNewNormalPhysicalType}
-                      normalPhysicalTypes={normalPhysicalTypes}
-                      isLoadingTypes={loadingNormalPhysicalTypes}
-                      submitButtonText="Save Normal Physical Day"
+              {/* Migraine Step 4: Attack Types */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <MigraineAttackTypesFormWrapper api={api} />
+                  </div>
+                </div>
+              </CarouselItem>
+
+              {/* Migraine Step 5: Pain Level */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <MigrainePainLevelForm
+                      onBack={() => {
+                        // Go back to attack types step
+                        api?.scrollTo(8)
+                      }}
+                      onContinue={() => {
+                        // Continue to symptoms step
+                        api?.scrollTo(10) // Index 10 is the symptoms step
+                      }}
                     />
-                    <Button variant="ghost" className="w-full" onClick={handleFlowBack}>
-                      Back to event types
-                    </Button>
                   </div>
                 </div>
-              </div>
-            </CarouselItem>
+              </CarouselItem>
 
-            {/* Migraine Placeholder */}
-            <CarouselItem className="flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="min-h-full flex items-center justify-center">
-                  <div className="text-center space-y-4 py-4">
-                    <Brain className="h-16 w-16 mx-auto text-purple-500" />
-                    <h2 className="text-2xl font-semibold">Migraine Tracking</h2>
-                    <p className="text-muted-foreground">Coming soon!</p>
-                    <Button variant="ghost" onClick={handleFlowBack}>
-                      Back to event types
-                    </Button>
+              {/* Migraine Step 6: Symptoms */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <MigraineSymptomTypesForm
+                      onBack={() => {
+                        // Go back to pain level step
+                        api?.scrollTo(9)
+                      }}
+                      onContinue={() => {
+                        // Continue to triggers step
+                        api?.scrollTo(11) // Index 11 is the triggers step
+                      }}
+                    />
                   </div>
                 </div>
-              </div>
-            </CarouselItem>
-          </CarouselContent>
-        </Carousel>
+              </CarouselItem>
+
+              {/* Migraine Step 7: Triggers */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <MigraineTriggerTypesForm
+                      onBack={() => {
+                        // Go back to symptoms step
+                        api?.scrollTo(10)
+                      }}
+                      onContinue={() => {
+                        // Continue to period status step
+                        api?.scrollTo(12) // Index 12 is the period status step
+                      }}
+                    />
+                  </div>
+                </div>
+              </CarouselItem>
+
+              {/* Migraine Step 8: Period Status */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <MigrainePeriodStatusForm
+                      onBack={() => {
+                        // Go back to triggers step
+                        api?.scrollTo(11)
+                      }}
+                      onContinue={() => {
+                        // Continue to medications step
+                        api?.scrollTo(13) // Index 13 is the medications step
+                      }}
+                    />
+                  </div>
+                </div>
+              </CarouselItem>
+
+              {/* Migraine Step 9: Medications */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <MigraineMedicationTypesForm
+                      onBack={() => {
+                        // Go back to period status step
+                        api?.scrollTo(12)
+                      }}
+                      onContinue={() => {
+                        // Continue to precognition step
+                        api?.scrollTo(14) // Index 14 is the precognition step
+                      }}
+                    />
+                  </div>
+                </div>
+              </CarouselItem>
+
+              {/* Migraine Step 10: Precognition */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <MigrainePrecognitionTypesForm
+                      onBack={() => {
+                        // Go back to medications step
+                        api?.scrollTo(13)
+                      }}
+                      onContinue={() => {
+                        // Continue to relief methods step
+                        api?.scrollTo(15) // Index 15 is the relief methods step
+                      }}
+                    />
+                  </div>
+                </div>
+              </CarouselItem>
+
+              {/* Migraine Step 11: Relief Methods */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <MigraineReliefTypesForm
+                      onBack={() => {
+                        // Go back to precognition step
+                        api?.scrollTo(14)
+                      }}
+                      onContinue={() => {
+                        // Continue to activity impact step
+                        api?.scrollTo(16) // Index 16 is the activity impact step
+                      }}
+                    />
+                  </div>
+                </div>
+              </CarouselItem>
+
+              {/* Migraine Step 12: Activity Impact */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <MigraineActivityTypesForm
+                      onBack={() => {
+                        // Go back to relief methods step
+                        api?.scrollTo(15)
+                      }}
+                      onContinue={() => {
+                        // Continue to pain locations step
+                        api?.scrollTo(17) // Index 17 is the pain locations step
+                      }}
+                    />
+                  </div>
+                </div>
+              </CarouselItem>
+
+              {/* Migraine Step 13: Pain Locations */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <MigraineLocationTypesForm
+                      onBack={() => {
+                        // Go back to activity impact step
+                        api?.scrollTo(16)
+                      }}
+                      onContinue={() => {
+                        // Continue to notes step
+                        api?.scrollTo(18) // Index 18 is the notes step
+                      }}
+                    />
+                  </div>
+                </div>
+              </CarouselItem>
+
+              {/* Migraine Step 14: Notes and Save */}
+              <CarouselItem className="flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="min-h-full flex items-center justify-center">
+                    <MigraineNotesForm
+                      onBack={() => {
+                        // Go back to pain locations step
+                        api?.scrollTo(17)
+                      }}
+                    />
+                  </div>
+                </div>
+              </CarouselItem>
+            </CarouselContent>
+          </Carousel>
+        </MigraineFormProvider>
       </div>
 
       <div className="p-4 border-t">

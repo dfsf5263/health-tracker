@@ -1,5 +1,6 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
+import { prepopulateUserTypes } from '@/lib/prepopulate-user-types'
 
 interface EnsureUserResult {
   user: {
@@ -63,6 +64,18 @@ export async function ensureUser(): Promise<EnsureUserResult> {
         lastName: clerkUser.lastName,
       },
     })
+
+    // Prepopulate user types for the newly created user
+    try {
+      await prepopulateUserTypes(user.id)
+    } catch (prepopulationError) {
+      console.error(`=== Type Prepopulation Error in ensureUser ===`)
+      console.error(`Timestamp: ${new Date().toISOString()}`)
+      console.error(`User ID: ${userId}`)
+      console.error(`Database User ID: ${user.id}`)
+      console.error(`Prepopulation Error:`, prepopulationError)
+      // Don't re-throw here - user creation succeeded, this is a secondary operation
+    }
 
     return { user, created: true }
   } catch (error) {

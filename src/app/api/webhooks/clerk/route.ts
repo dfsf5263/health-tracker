@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import { WebhookEvent } from '@clerk/nextjs/server'
 import { Webhook } from 'svix'
 import { prisma } from '@/lib/prisma'
+import { prepopulateUserTypes } from '@/lib/prepopulate-user-types'
 
 export async function POST(req: Request) {
   // Get the headers
@@ -65,7 +66,7 @@ export async function POST(req: Request) {
 
     try {
       // Create or update user in database
-      await prisma.user.upsert({
+      const result = await prisma.user.upsert({
         where: { clerkUserId: id },
         create: upsertData,
         update: {
@@ -74,6 +75,21 @@ export async function POST(req: Request) {
           lastName: last_name || null,
         },
       })
+
+      // If this is a user creation event, prepopulate their types
+      if (eventType === 'user.created') {
+        try {
+          await prepopulateUserTypes(result.id)
+        } catch (prepopulationError) {
+          console.error(`=== Type Prepopulation Error ===`)
+          console.error(`Timestamp: ${new Date().toISOString()}`)
+          console.error(`Event Type: ${eventType}`)
+          console.error(`User ID: ${id}`)
+          console.error(`Database User ID: ${result.id}`)
+          console.error(`Prepopulation Error:`, prepopulationError)
+          // Don't re-throw here - user creation succeeded, this is a secondary operation
+        }
+      }
     } catch (error) {
       console.error('=== Webhook Error ===')
       console.error('Timestamp:', new Date().toISOString())
