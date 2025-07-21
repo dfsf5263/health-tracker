@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+import { requireAuth } from '@/lib/auth-middleware'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
@@ -34,19 +34,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   } | null = null
 
   try {
-    const authResult = await auth()
-    userId = authResult.userId
-    if (!userId) {
-      return ApiError.unauthorized(requestId)
+    const authContext = await requireAuth()
+    if (authContext instanceof NextResponse) {
+      return authContext
     }
 
-    user = await prisma.user.findUnique({
-      where: { clerkUserId: userId },
-    })
-
-    if (!user) {
-      return ApiError.notFound('User', requestId)
-    }
+    const { userId: authUserId, user: authUser } = authContext
+    userId = authUserId
+    user = authUser
 
     body = await request.json()
     const validatedData = updatePeriodDaySchema.parse(body)
@@ -146,19 +141,14 @@ export async function DELETE(
   } | null = null
 
   try {
-    const authResult = await auth()
-    userId = authResult.userId
-    if (!userId) {
-      return ApiError.unauthorized(requestId)
+    const authContext = await requireAuth()
+    if (authContext instanceof NextResponse) {
+      return authContext
     }
 
-    user = await prisma.user.findUnique({
-      where: { clerkUserId: userId },
-    })
-
-    if (!user) {
-      return ApiError.notFound('User', requestId)
-    }
+    const { userId: authUserId, user: authUser } = authContext
+    userId = authUserId
+    user = authUser
 
     const { id: paramId } = await params
     id = paramId

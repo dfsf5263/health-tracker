@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
 import { SiteHeader } from '@/components/site-header'
-import { SessionMonitor } from '@/components/session-monitor'
+import { AuthGuard } from '@/components/auth-guard'
 import { getPageTitle } from '@/lib/route-titles'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -12,8 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const title = getPageTitle(pathname)
 
   return (
-    <>
-      <SessionMonitor />
+    <AuthGuard>
       <SidebarProvider
         style={
           {
@@ -27,6 +26,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex flex-1 flex-col">{children}</div>
         </SidebarInset>
       </SidebarProvider>
-    </>
+    </AuthGuard>
   )
 }

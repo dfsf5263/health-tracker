@@ -32,6 +32,7 @@ This is a **Health Tracker** application built with Next.js 15 using the App Rou
 - **PostgreSQL 17** database with native UUID support
 - **Prisma ORM** for type-safe database operations and migrations
 - **Next.js API Routes** for RESTful backend services
+- **Better Auth** for email/password authentication with server-side sessions reference **BETTER-AUTH.txt** for documentation
 
 **Development Tools:**
 - **Biome** for fast formatting and linting (replaces ESLint + Prettier)

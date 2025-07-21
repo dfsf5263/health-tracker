@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+import { requireAuth } from '@/lib/auth-middleware'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
@@ -12,19 +12,14 @@ export async function GET(request: NextRequest) {
   let user: { id: string } | null = null
 
   try {
-    const authResult = await auth()
-    userId = authResult.userId
-    if (!userId) {
-      return ApiError.unauthorized(requestId)
+    const authContext = await requireAuth()
+    if (authContext instanceof NextResponse) {
+      return authContext
     }
 
-    user = await prisma.user.findUnique({
-      where: { clerkUserId: userId },
-    })
-
-    if (!user) {
-      return ApiError.notFound('User', requestId)
-    }
+    const { userId: authUserId, user: authUser } = authContext
+    userId = authUserId
+    user = authUser
 
     // Get query parameters
     const searchParams = request.nextUrl.searchParams

@@ -1,7 +1,7 @@
 'use client'
 
 import { ChevronsUpDown, LogOut, Settings } from 'lucide-react'
-import { useUser, useClerk } from '@clerk/nextjs'
+import { authClient } from '@/lib/auth-client'
 import { useRouter } from 'next/navigation'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -23,13 +23,12 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function NavUser() {
-  const { user, isLoaded } = useUser()
-  const { signOut } = useClerk()
+  const { data: session, isPending } = authClient.useSession()
   const router = useRouter()
   const { isMobile } = useSidebar()
 
-  // Show loading skeleton while Clerk is initializing
-  if (!isLoaded) {
+  // Show loading skeleton while Better Auth is initializing
+  if (isPending) {
     return (
       <SidebarMenu>
         <SidebarMenuItem>
@@ -45,8 +44,8 @@ export function NavUser() {
     )
   }
 
-  // If Clerk is loaded but no user, show a basic fallback
-  if (!user) {
+  // If no session, show a basic fallback
+  if (!session) {
     return (
       <SidebarMenu>
         <SidebarMenuItem>
@@ -69,7 +68,7 @@ export function NavUser() {
   }
 
   const handleSignOut = async () => {
-    await signOut()
+    await authClient.signOut()
     router.push('/')
   }
 
@@ -77,13 +76,11 @@ export function NavUser() {
     router.push('/dashboard/settings/profile')
   }
 
-  const displayName =
-    user.fullName ||
-    `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
-    user.firstName ||
-    'User'
-  const email = user.primaryEmailAddress?.emailAddress || ''
-  const avatarUrl = user.imageUrl
+  const user = session.user
+  const displayName = user.name || 'User'
+  const email = user.email || ''
+  // Better Auth doesn't provide image URLs by default
+  const avatarUrl = undefined
 
   return (
     <SidebarMenu>

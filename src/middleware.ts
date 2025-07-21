@@ -1,70 +1,63 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { getSessionCookie } from 'better-auth/cookies'
 import { standardApiSizeLimit } from '@/lib/middleware/request-size'
-import { apiRateLimit, authRateLimit, strictRateLimit, createRateLimit } from '@/lib/rate-limit'
+import { apiRateLimit, authRateLimit, strictRateLimit } from '@/lib/rate-limit'
 
 // Define public routes that don't require authentication
-const isPublicRoute = createRouteMatcher([
-  '/',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/api/webhooks/clerk(.*)',
-  '/api/health',
-  '/api/cron/(.*)',
-  '/api/migraine-location-types',
-])
+const isPublicRoute = (pathname: string) => {
+  const publicPaths = [
+    '/',
+    '/sign-in',
+    '/sign-up',
+    '/verify-email-sent',
+    '/email-verified',
+    '/api/auth',
+    '/api/health',
+    '/api/cron',
+    '/api/migraine-location-types',
+  ]
+
+  return publicPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+}
 
 // Define authentication routes (user login attempts)
-const isAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)'])
-
-// Define webhook routes that need higher limits
-const isWebhookRoute = createRouteMatcher(['/api/webhooks/clerk(.*)'])
+const isAuthRoute = (pathname: string) => {
+  return pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up')
+}
 
 // Define routes that should have no rate limiting
-const isUnlimitedRoute = createRouteMatcher([
-  '/api/health',
-  '/api/cron/(.*)', // Cron jobs have their own auth
-])
+const isUnlimitedRoute = (pathname: string) => {
+  return pathname === '/api/health' || pathname.startsWith('/api/cron/')
+}
 
 // Define routes for sensitive operations
-const isSensitiveRoute = createRouteMatcher([
-  '/api/birth-control-days',
-  '/api/period-days',
-  '/api/migraines',
-])
+const isSensitiveRoute = (pathname: string) => {
+  const sensitivePaths = ['/api/birth-control-days', '/api/period-days', '/api/migraines']
 
-// Create a specific rate limiter for webhooks (much higher limit)
-const webhookRateLimit = createRateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  maxRequests: 1000, // 1000 requests per minute (for all users)
-  message: 'Webhook rate limit exceeded. Please contact support.',
-})
+  return sensitivePaths.some((path) => pathname.startsWith(path))
+}
 
-export default clerkMiddleware(async (auth, req) => {
-  // Add security headers to all responses
+export default async function middleware(req: NextRequest) {
   const response = NextResponse.next()
+  const pathname = req.nextUrl.pathname
 
   // Apply rate limiting for API routes and auth routes
-  if (req.nextUrl.pathname.startsWith('/api/') || isAuthRoute(req)) {
+  if (pathname.startsWith('/api/') || isAuthRoute(pathname)) {
     // Skip rate limiting for unlimited routes
-    if (!isUnlimitedRoute(req)) {
-      // Apply webhook rate limiting (high volume)
-      if (isWebhookRoute(req)) {
-        const rateLimitResult = await webhookRateLimit(req)
-        if (rateLimitResult) return rateLimitResult
-      }
+    if (!isUnlimitedRoute(pathname)) {
       // Apply auth rate limiting for login/signup attempts
-      else if (isAuthRoute(req)) {
+      if (isAuthRoute(pathname)) {
         const rateLimitResult = await authRateLimit(req)
         if (rateLimitResult) return rateLimitResult
       }
       // Apply strict rate limiting for sensitive data operations
-      else if (isSensitiveRoute(req)) {
+      else if (isSensitiveRoute(pathname)) {
         const rateLimitResult = await strictRateLimit(req)
         if (rateLimitResult) return rateLimitResult
       }
       // Apply standard rate limiting for all other API routes
-      else if (req.nextUrl.pathname.startsWith('/api/')) {
+      else if (pathname.startsWith('/api/')) {
         const rateLimitResult = await apiRateLimit(req)
         if (rateLimitResult) return rateLimitResult
       }
@@ -102,11 +95,11 @@ export default clerkMiddleware(async (auth, req) => {
   // Content Security Policy
   const cspHeader = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.com https://*.clerk.com https://*.clerk.accounts.dev https://clerk.health.crowland.us https://challenges.cloudflare.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https: blob:",
     "font-src 'self' https://fonts.gstatic.com",
-    "connect-src 'self' https://clerk.com https://*.clerk.com https://*.clerk.accounts.dev https://api.clerk.com https://clerk.health.crowland.us wss://*.clerk.com wss://*.clerk.accounts.dev wss://clerk.health.crowland.us",
+    "connect-src 'self'",
     "frame-src 'self' https://challenges.cloudflare.com",
     "worker-src 'self' blob:",
     "object-src 'none'",
@@ -127,12 +120,18 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   // Protect all routes except public ones
-  if (!isPublicRoute(req)) {
-    await auth.protect()
+  if (!isPublicRoute(pathname)) {
+    // Check for Better Auth session cookie (optimistic check)
+    const sessionCookie = getSessionCookie(req)
+
+    if (!sessionCookie) {
+      // Redirect to sign-in for protected routes
+      return NextResponse.redirect(new URL('/sign-in', req.url))
+    }
   }
 
   return response
-})
+}
 
 export const config = {
   matcher: [

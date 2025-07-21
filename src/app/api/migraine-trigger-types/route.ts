@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+import { requireAuth } from '@/lib/auth-middleware'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
@@ -19,19 +19,14 @@ export async function GET(request: NextRequest) {
   let user: { id: string } | null = null
 
   try {
-    const authResult = await auth()
-    userId = authResult.userId
-    if (!userId) {
-      return ApiError.unauthorized(requestId)
+    const authContext = await requireAuth()
+    if (authContext instanceof NextResponse) {
+      return authContext
     }
 
-    user = await prisma.user.findUnique({
-      where: { clerkUserId: userId },
-    })
-
-    if (!user) {
-      return ApiError.notFound('User', requestId)
-    }
+    const { userId: authUserId, user: authUser } = authContext
+    userId = authUserId
+    user = authUser
 
     const migraineTriggerTypes = await prisma.migraineTriggerType.findMany({
       where: { userId: user.id },
@@ -62,19 +57,14 @@ export async function POST(request: NextRequest) {
   let validatedData: z.infer<typeof createMigraineTriggerTypeSchema> | null = null
 
   try {
-    const authResult = await auth()
-    userId = authResult.userId
-    if (!userId) {
-      return ApiError.unauthorized(requestId)
+    const authContext = await requireAuth()
+    if (authContext instanceof NextResponse) {
+      return authContext
     }
 
-    user = await prisma.user.findUnique({
-      where: { clerkUserId: userId },
-    })
-
-    if (!user) {
-      return ApiError.notFound('User', requestId)
-    }
+    const { userId: authUserId, user: authUser } = authContext
+    userId = authUserId
+    user = authUser
 
     body = await request.json()
     validatedData = createMigraineTriggerTypeSchema.parse(body)

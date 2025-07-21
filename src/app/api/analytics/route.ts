@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+import { requireAuth } from '@/lib/auth-middleware'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logApiError } from '@/lib/error-logger'
@@ -14,14 +14,17 @@ export async function GET(request: NextRequest) {
   } | null = null
 
   try {
-    const authResult = await auth()
-    userId = authResult.userId
-    if (!userId) {
-      return ApiError.unauthorized(requestId)
+    const authContext = await requireAuth()
+    if (authContext instanceof NextResponse) {
+      return authContext
     }
 
-    user = await prisma.user.findUnique({
-      where: { clerkUserId: userId },
+    const { userId: authUserId, user: authUser } = authContext
+    userId = authUserId
+
+    // Get the specific fields we need for analytics
+    const userWithAnalytics = await prisma.user.findUnique({
+      where: { id: authUser.id },
       select: {
         id: true,
         averageCycleLength: true,
@@ -29,9 +32,11 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    if (!user) {
-      return ApiError.notFound('User', requestId)
+    if (!userWithAnalytics) {
+      return ApiError.notFound('User analytics', requestId)
     }
+
+    user = userWithAnalytics
 
     // Get last 6 cycles
     const cycles = await prisma.cycle.findMany({

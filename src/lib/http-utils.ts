@@ -92,6 +92,25 @@ export async function apiFetch<T = unknown>(
       }
     }
 
+    // Handle authentication errors (401) - redirect instead of showing toast
+    if (response.status === 401) {
+      const errorData: ApiErrorResponse & { message?: string } = await response
+        .json()
+        .catch(() => ({}))
+
+      // Redirect to sign-in page if we're in the browser
+      if (typeof window !== 'undefined') {
+        window.location.href = '/sign-in'
+      }
+
+      return {
+        data: null,
+        error: 'Authentication required',
+        response,
+        errorData,
+      }
+    }
+
     // Handle other HTTP errors
     if (!response.ok) {
       const errorData: ApiErrorResponse & { message?: string } = await response

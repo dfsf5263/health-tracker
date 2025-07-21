@@ -9,15 +9,20 @@ datasource db {
 
 model User {
   id                    String                 @id @default(uuid()) @db.Uuid
-  clerkUserId           String                 @unique @map("clerk_user_id")
   email                 String                 @unique
+  name                  String?                
+  image                 String?                
+  emailVerified         Boolean                @default(false) @map("email_verified")
   firstName             String?                @map("first_name")
   lastName              String?                @map("last_name")
+  passwordHash          String?                @map("password_hash")
   averageCycleLength    Float?                 @map("average_cycle_length")
   averagePeriodLength   Float?                 @map("average_period_length")
   createdAt             DateTime               @default(now()) @map("created_at")
   updatedAt             DateTime               @updatedAt @map("updated_at")
 
+  sessions              Session[]
+  accounts              Account[]
   cycles                Cycle[]
   periodDays            PeriodDay[]
   birthControlTypes     BirthControlType[]
@@ -37,6 +42,43 @@ model User {
 
   @@map("user")
 }
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  token     String   @unique
+  userId    String   @map("user_id") @db.Uuid
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                     String    @id @default(uuid()) @db.Uuid
+  userId                 String    @map("user_id") @db.Uuid
+  accountId              String    @map("account_id")
+  providerId             String    @map("provider_id")
+  accessToken            String?   @map("access_token")
+  refreshToken           String?   @map("refresh_token")
+  idToken                String?   @map("id_token")
+  accessTokenExpiresAt   DateTime? @map("access_token_expires_at")
+  password               String?
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("account")
+}
+
 
 model Cycle {
   id                    String                 @id @default(uuid()) @db.Uuid
