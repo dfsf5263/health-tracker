@@ -3,11 +3,11 @@
 # Exit on any error
 set -e
 
-echo "Starting Finance Tracker with cron support..."
+echo "Starting Health Tracker with cron support..."
 
 # Start the cron job in the background
-echo "Starting weekly summary cron job..."
-node scripts/weekly-summary-cron.js &
+echo "Starting birth control reminder cron job..."
+node scripts/birth-control-reminder-cron.js &
 CRON_PID=$!
 echo "Cron job started with PID: $CRON_PID"
 

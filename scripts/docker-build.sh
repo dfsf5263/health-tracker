@@ -1,12 +1,12 @@
 #!/bin/bash
 set -e
 
-# Finance Tracker Docker Build Script
+# Health Tracker Docker Build Script
 # Builds and optionally pushes the Docker image to Docker Hub
 
 # Configuration
 DOCKER_REGISTRY="dfsf5263"
-IMAGE_NAME="finance-tracker"
+IMAGE_NAME="health-tracker"
 FULL_IMAGE_NAME="${DOCKER_REGISTRY}/${IMAGE_NAME}"
 
 # Default values
@@ -112,7 +112,7 @@ if [ ! -f "Dockerfile" ]; then
     exit 1
 fi
 
-log "Starting Docker build for Finance Tracker"
+log "Starting Docker build for Health Tracker"
 log "Registry: ${DOCKER_REGISTRY}"
 log "Image: ${IMAGE_NAME}"
 log "Tag: ${TAG}"
@@ -233,7 +233,7 @@ fi
 echo ""
 echo "To run the container locally:"
 echo "  docker run -d \\"
-echo "    --name finance-tracker \\"
+echo "    --name health-tracker \\"
 echo "    -p 3000:3000 \\"
 echo "    -e DATABASE_URL=\"postgresql://user:pass@host:5432/db\" \\"
 echo "    -e NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=\"${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}\" \\"

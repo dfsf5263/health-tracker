@@ -386,9 +386,10 @@ const eventTypeConfigs: EventTypeConfig[] = [
 
 interface TrackerCalendarProps {
   refreshTrigger?: number
+  onLoadingChange?: (isLoading: boolean) => void
 }
 
-export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps) {
+export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: TrackerCalendarProps) {
   const router = useRouter()
   const [date, setDate] = React.useState<Date | undefined>(new Date())
   const [cycles, setCycles] = React.useState<Cycle[]>([])
@@ -404,12 +405,9 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
   const [predictions, setPredictions] = React.useState<PredictionResult | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
 
-  React.useEffect(() => {
-    fetchData()
-  }, [refreshTrigger])
-
-  const fetchData = async () => {
+  const fetchData = React.useCallback(async () => {
     setIsLoading(true)
+    onLoadingChange?.(true)
     try {
       // Fetch cycles, period days, birth control days, irregular physical days, normal physical days, and migraines in parallel
       const [
@@ -473,8 +471,13 @@ export default function TrackerCalendar({ refreshTrigger }: TrackerCalendarProps
       toast.error('Failed to load data')
     } finally {
       setIsLoading(false)
+      onLoadingChange?.(false)
     }
-  }
+  }, [onLoadingChange])
+
+  React.useEffect(() => {
+    fetchData()
+  }, [refreshTrigger, fetchData])
 
   const getPeriodDay = (day: Date): PeriodDay | null => {
     return (

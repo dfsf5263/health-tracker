@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { ModeToggle } from '@/components/mode-toggle'
 
-export function SiteHeader({ title }: { title: string }) {
+export function SiteHeader({ title, pathname }: { title: string; pathname?: string }) {
   const router = useRouter()
 
   const handleAddEvent = () => {
@@ -21,10 +21,12 @@ export function SiteHeader({ title }: { title: string }) {
         <Separator orientation="vertical" className="mx-2 h-4" />
         <h1 className="text-base font-medium">{title}</h1>
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="icon" title="Add Event" onClick={handleAddEvent}>
-            <PlusIcon className="h-[1.2rem] w-[1.2rem]" />
-            <span className="sr-only">Add Event</span>
-          </Button>
+          {pathname !== '/dashboard/add-event' && (
+            <Button variant="outline" size="icon" title="Add Event" onClick={handleAddEvent}>
+              <PlusIcon className="h-[1.2rem] w-[1.2rem]" />
+              <span className="sr-only">Add Event</span>
+            </Button>
+          )}
           <ModeToggle />
         </div>
       </div>

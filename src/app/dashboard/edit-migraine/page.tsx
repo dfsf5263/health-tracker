@@ -35,7 +35,7 @@ const isValidUUID = (uuid: string): boolean => {
 // Helper component to access migraine form context for conditional navigation
 function MigraineAttackTypesFormWrapper({ api }: { api: CarouselApi | undefined }) {
   const migraineContext = useMigraineForm()
-  const { formData, navigateToStep } = migraineContext
+  const { navigateToStep } = migraineContext
 
   const handleBack = () => {
     const previousStep = migraineContext.goBackOneStep()

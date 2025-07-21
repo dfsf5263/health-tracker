@@ -62,7 +62,7 @@ export function MigraineStartDateTimeForm({ onContinue, onBack }: MigraineStartD
   const handleDateSelect = (newDate: Date | undefined) => {
     setDate(newDate)
     setDateDrawerOpen(false)
-    
+
     // Update form context immediately if both date and time are available
     if (newDate && selectedTime) {
       const [hours, minutes] = selectedTime.split(':').map(Number)
@@ -75,7 +75,7 @@ export function MigraineStartDateTimeForm({ onContinue, onBack }: MigraineStartD
   const handleTimeSelect = (timeValue: string) => {
     setSelectedTime(timeValue)
     setTimeDrawerOpen(false)
-    
+
     // Update form context immediately if both date and time are available
     if (date && timeValue) {
       const [hours, minutes] = timeValue.split(':').map(Number)

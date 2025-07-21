@@ -23,7 +23,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       >
         <AppSidebar variant="inset" />
         <SidebarInset>
-          <SiteHeader title={title} />
+          <SiteHeader title={title} pathname={pathname} />
           <div className="flex flex-1 flex-col">{children}</div>
         </SidebarInset>
       </SidebarProvider>
