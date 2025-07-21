@@ -20,5 +20,4 @@ export const requestSizeLimit = (maxSizeBytes: number) => {
 }
 
 // Pre-configured limits
-export const bulkUploadSizeLimit = requestSizeLimit(10 * 1024 * 1024) // 10MB
 export const standardApiSizeLimit = requestSizeLimit(1 * 1024 * 1024) // 1MB

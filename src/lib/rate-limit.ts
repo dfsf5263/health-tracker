@@ -127,25 +127,18 @@ export function createUserRateLimit(config: RateLimitConfig) {
  */
 export const apiRateLimit = createRateLimit({
   windowMs: 60 * 1000, // 1 minutes
-  maxRequests: 120, // 60 requests per minute
+  maxRequests: 120, // 120 requests per minute
   message: 'Too many API requests, please try again later.',
 })
 
 export const authRateLimit = createRateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 5, // 5 auth attempts per 15 minutes
+  maxRequests: 15, // 15 auth attempts per 15 minutes
   message: 'Too many authentication attempts, please try again later.',
 })
 
 export const strictRateLimit = createRateLimit({
   windowMs: 60 * 1000, // 1 minute
-  maxRequests: 60, // 30 requests per minute
+  maxRequests: 60, // 60 requests per minute
   message: 'Rate limit exceeded, please slow down.',
-})
-
-// Enhanced bulk upload rate limiter with stricter limits
-export const bulkUploadRateLimit = createRateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  maxRequests: 20, // Only 10 bulk uploads per 1 minute
-  message: 'Too many bulk uploads. Please wait before uploading again.',
 })
