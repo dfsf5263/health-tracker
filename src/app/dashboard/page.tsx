@@ -10,7 +10,7 @@ export default function DashboardPage() {
   return (
     <>
       <LoadingOverlay isLoading={isLoading} text="Loading dashboard data..." />
-      <div className="@container/main flex flex-1 p-4">
+      <div className="@container/main flex flex-1 p-4 justify-center items-start">
         <Calendar onLoadingChange={setIsLoading} />
       </div>
     </>

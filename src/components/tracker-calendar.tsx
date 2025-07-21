@@ -941,15 +941,15 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
   }
 
   return (
-    <Card className="w-full py-4">
-      <CardContent className="px-4">
+    <Card className="w-fit">
+      <CardContent className="px-4 py-4">
         <CalendarComponent
           mode="single"
           selected={date}
           onSelect={setDate}
           numberOfMonths={1}
           captionLayout="dropdown"
-          className="w-full bg-transparent p-0"
+          className="w-full bg-transparent p-0 [--cell-size:--spacing(12)] sm:[--cell-size:--spacing(13)] md:[--cell-size:--spacing(15)] lg:[--cell-size:--spacing(24)] xl:[--cell-size:--spacing(33)] 2xl:[--cell-size:--spacing(35)]"
           formatters={{
             formatMonthDropdown: (date) => {
               return date.toLocaleString('default', { month: 'long' })
@@ -971,62 +971,60 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
                   className={isPredicted ? 'ring-1 ring-red-200 ring-dashed' : ''}
                   {...props}
                 >
-                  <div className="flex flex-col items-center w-full h-full pb-2">
-                    <div className="flex-1 flex items-center justify-center">{children}</div>
-                    <div className="flex items-center justify-center sm:gap-0.5 min-h-[1rem]">
-                      {!modifiers.outside && periodDay && (
-                        <>
-                          {/* Desktop: Droplet icons */}
-                          <Droplet
-                            className={`hidden sm:block h-3 w-3 ${getDropletColor(periodDay.color)} mb-1`}
-                          />
-                          {/* Mobile: Rectangle icons */}
-                          <RectangleVertical
-                            className={`block sm:hidden size-1.5 ${getDropletColor(periodDay.color)}`}
-                          />
-                        </>
-                      )}
-                      {!modifiers.outside && isPredicted && (
-                        <>
-                          {/* Desktop: Droplet icons */}
-                          <Droplet className="hidden sm:block h-3 w-3 text-red-300 opacity-60 mb-1" />
-                          {/* Mobile: Rectangle icons */}
-                          <RectangleVertical className="block sm:hidden size-1.5 text-red-300 fill-red-300 opacity-60" />
-                        </>
-                      )}
-                      {!modifiers.outside && bcDays.length > 0 && (
-                        <>
-                          {/* Desktop: Pill icon */}
-                          <Pill className="hidden sm:block h-3 w-3 text-blue-500 fill-blue-500 mb-1" />
-                          {/* Mobile: Rectangle icon */}
-                          <RectangleVertical className="block sm:hidden size-1.5 text-blue-500 fill-blue-500" />
-                        </>
-                      )}
-                      {!modifiers.outside && ipDays.length > 0 && (
-                        <>
-                          {/* Desktop: Activity icon */}
-                          <Activity className="hidden sm:block h-3 w-3 text-orange-500 fill-orange-500 mb-1" />
-                          {/* Mobile: Rectangle icon */}
-                          <RectangleVertical className="block sm:hidden size-1.5 text-orange-500 fill-orange-500" />
-                        </>
-                      )}
-                      {!modifiers.outside && npDays.length > 0 && (
-                        <>
-                          {/* Desktop: Heart icon */}
-                          <Heart className="hidden sm:block h-3 w-3 text-green-500 fill-green-500 mb-1" />
-                          {/* Mobile: Rectangle icon */}
-                          <RectangleVertical className="block sm:hidden size-1.5 text-green-500 fill-green-500" />
-                        </>
-                      )}
-                      {!modifiers.outside && migraineDays.length > 0 && (
-                        <>
-                          {/* Desktop: Brain icon */}
-                          <Brain className="hidden sm:block h-3 w-3 text-purple-500 fill-purple-500 mb-1" />
-                          {/* Mobile: Rectangle icon */}
-                          <RectangleVertical className="block sm:hidden size-1.5 text-purple-500 fill-purple-500" />
-                        </>
-                      )}
-                    </div>
+                  {children}
+                  <div className='flex items-center justify-center'>
+                  {!modifiers.outside && periodDay && (
+                    <>
+                      {/* Desktop: Droplet icons */}
+                      <Droplet
+                        className={`hidden sm:block h-3 w-3 ${getDropletColor(periodDay.color)}`}
+                      />
+                      {/* Mobile: Rectangle icons */}
+                      <RectangleVertical
+                        className={`block sm:hidden size-1.5 ${getDropletColor(periodDay.color)}`}
+                      />
+                    </>
+                  )}
+                  {!modifiers.outside && isPredicted && (
+                    <>
+                      {/* Desktop: Droplet icons */}
+                      <Droplet className="hidden sm:block h-3 w-3 text-red-300 opacity-60" />
+                      {/* Mobile: Rectangle icons */}
+                      <RectangleVertical className="block sm:hidden size-1.5 text-red-300 fill-red-300 opacity-60" />
+                    </>
+                  )}
+                  {!modifiers.outside && bcDays.length > 0 && (
+                    <>
+                      {/* Desktop: Pill icon */}
+                      <Pill className="hidden sm:block h-3 w-3 text-blue-500 fill-blue-500" />
+                      {/* Mobile: Rectangle icon */}
+                      <RectangleVertical className="block sm:hidden size-1.5 text-blue-500 fill-blue-500" />
+                    </>
+                  )}
+                  {!modifiers.outside && ipDays.length > 0 && (
+                    <>
+                      {/* Desktop: Activity icon */}
+                      <Activity className="hidden sm:block h-3 w-3 text-orange-500 fill-orange-500" />
+                      {/* Mobile: Rectangle icon */}
+                      <RectangleVertical className="block sm:hidden size-1.5 text-orange-500 fill-orange-500" />
+                    </>
+                  )}
+                  {!modifiers.outside && npDays.length > 0 && (
+                    <>
+                      {/* Desktop: Heart icon */}
+                      <Heart className="hidden sm:block h-3 w-3 text-green-500 fill-green-500" />
+                      {/* Mobile: Rectangle icon */}
+                      <RectangleVertical className="block sm:hidden size-1.5 text-green-500 fill-green-500" />
+                    </>
+                  )}
+                  {!modifiers.outside && migraineDays.length > 0 && (
+                    <>
+                      {/* Desktop: Brain icon */}
+                      <Brain className="hidden sm:block h-3 w-3 text-purple-500 fill-purple-500" />
+                      {/* Mobile: Rectangle icon */}
+                      <RectangleVertical className="block sm:hidden size-1.5 text-purple-500 fill-purple-500" />
+                    </>
+                  )}
                   </div>
                 </CalendarDayButton>
               )

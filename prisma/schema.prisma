@@ -54,6 +54,7 @@ model Cycle {
 
 enum Flow {
   Spotting
+  Light
   Medium
   Heavy
   SuperHeavy

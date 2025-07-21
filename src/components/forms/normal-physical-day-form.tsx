@@ -7,7 +7,14 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Label } from '@/components/ui/label'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer'
 import {
   Select,
   SelectContent,
@@ -53,11 +60,11 @@ export function NormalPhysicalDayForm({
   const [typeId, setTypeId] = useState<string | undefined>(initialData?.typeId)
   const [notes, setNotes] = useState(initialData?.notes || '')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [dateDrawerOpen, setDateDrawerOpen] = useState(false)
 
   const handleDateSelect = (selectedDate: Date | undefined) => {
     setDate(selectedDate)
-    setDatePickerOpen(false) // Close popover immediately after selection
+    setDateDrawerOpen(false) // Close drawer immediately after selection
   }
 
   const handleSubmit = async () => {
@@ -83,30 +90,34 @@ export function NormalPhysicalDayForm({
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="date">Date</Label>
-        <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
-          <PopoverTrigger asChild>
+        <Drawer open={dateDrawerOpen} onOpenChange={setDateDrawerOpen}>
+          <DrawerTrigger asChild>
             <Button
               id="date"
               variant="outline"
               className={cn(
-                'w-full justify-start text-left font-normal',
+                'w-full justify-between font-normal',
                 !date && 'text-muted-foreground'
               )}
             >
-              <CalendarIcon className="mr-2 h-4 w-4" />
               {date ? format(date, 'PPP') : 'Select date'}
+              <CalendarIcon className="h-4 w-4" />
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          </DrawerTrigger>
+          <DrawerContent className="w-auto overflow-hidden p-0">
+            <DrawerHeader className="sr-only">
+              <DrawerTitle>Select date</DrawerTitle>
+              <DrawerDescription>Choose the date for your normal physical day</DrawerDescription>
+            </DrawerHeader>
             <Calendar
               mode="single"
               selected={date}
               onSelect={handleDateSelect}
-              initialFocus
+              className="mx-auto [--cell-size:clamp(0px,calc(100vw/7.5),52px)]"
               disabled={(date) => date > new Date()}
             />
-          </PopoverContent>
-        </Popover>
+          </DrawerContent>
+        </Drawer>
       </div>
 
       <div className="space-y-2">

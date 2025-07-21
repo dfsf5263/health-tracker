@@ -3,7 +3,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Calendar, User, Settings } from 'lucide-react'
+import { Calendar, User, Settings, BarChart3 } from 'lucide-react'
 
 import { NavMain } from '@/components/nav-main'
 import { NavGroup } from '@/components/nav-group'
@@ -25,6 +25,11 @@ const data = {
       title: 'Dashboard',
       url: '/dashboard',
       icon: Calendar,
+    },
+    {
+      title: 'Analytics',
+      url: '/dashboard/analytics',
+      icon: BarChart3,
     },
     {
       title: 'Manage Event Types',

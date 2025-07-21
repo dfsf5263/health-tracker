@@ -34,7 +34,7 @@ export async function syncCycles(userId: string) {
         (currentDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)
       )
 
-      if (daysDiff > 1) {
+      if (daysDiff > 3) {
         cycles.push({
           startDate: currentCycleStart,
           endDate: lastDate,
