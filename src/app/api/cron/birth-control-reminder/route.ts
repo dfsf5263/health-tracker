@@ -1,25 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
 
 // Placeholder for birth control reminder cron job endpoint
 // This will be implemented in the future when reminder functionality is added
 
 export async function POST(request: NextRequest) {
+  const requestId = generateRequestId()
+
   try {
     // Verify the request is from the cron job
     const authHeader = request.headers.get('authorization')
     const cronSecret = process.env.CRON_SECRET
 
     if (!cronSecret) {
-      console.error('CRON_SECRET environment variable is not set')
-      return NextResponse.json({ error: 'Cron secret not configured' }, { status: 500 })
+      await logApiError({
+        request,
+        error: new Error('CRON_SECRET environment variable is not set'),
+        context: {},
+        operation: 'verify cron secret',
+        requestId,
+      })
+      return ApiError.internal('Cron secret not configured', requestId)
     }
 
     if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
-      console.error('Invalid or missing authorization header for cron job')
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      await logApiError({
+        request,
+        error: new Error('Invalid or missing authorization header for cron job'),
+        context: {
+          hasAuthHeader: !!authHeader,
+        },
+        operation: 'authorize cron job',
+        requestId,
+      })
+      return ApiError.unauthorized(requestId)
     }
 
-    console.log('Birth control reminder cron job triggered')
+    console.log(`Birth control reminder cron job triggered - Request ID: ${requestId}`)
 
     // TODO: Implement birth control reminder logic
     // This could include:
@@ -37,7 +55,9 @@ export async function POST(request: NextRequest) {
 
     const details: Array<{ email: string; success: boolean; error?: string }> = []
 
-    console.log('Birth control reminder cron job completed (placeholder)')
+    console.log(
+      `Birth control reminder cron job completed (placeholder) - Request ID: ${requestId}`
+    )
     console.log(`- Total users checked: ${results.total}`)
     console.log(`- Reminders sent: ${results.successful}`)
     console.log(`- Failed: ${results.failed}`)
@@ -49,13 +69,13 @@ export async function POST(request: NextRequest) {
       message: 'Birth control reminder cron job completed (placeholder implementation)',
     })
   } catch (error) {
-    console.error('Error in birth control reminder cron job:', error)
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    )
+    await logApiError({
+      request,
+      error,
+      context: {},
+      operation: 'birth control reminder cron job',
+      requestId,
+    })
+    return ApiError.internal('birth control reminder cron job', requestId)
   }
 }

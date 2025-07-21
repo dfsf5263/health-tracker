@@ -2,6 +2,8 @@ import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
 
 const updateIrregularPhysicalDaySchema = z.object({
   date: z
@@ -13,21 +15,28 @@ const updateIrregularPhysicalDaySchema = z.object({
 })
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const requestId = generateRequestId()
+  let userId: string | null = null
+  let user: { id: string } | null = null
+  let id: string | null = null
+
   try {
-    const { userId } = await auth()
+    const authResult = await auth()
+    userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
-    const user = await prisma.user.findUnique({
+    user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
-    const { id } = await params
+    const { id: paramId } = await params
+    id = paramId
     const irregularPhysicalDay = await prisma.irregularPhysicalDay.findFirst({
       where: {
         id,
@@ -39,20 +48,32 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!irregularPhysicalDay) {
-      return NextResponse.json({ error: 'Irregular physical day not found' }, { status: 404 })
+      return ApiError.notFound('Irregular physical day', requestId)
     }
 
     return NextResponse.json(irregularPhysicalDay)
   } catch (error) {
-    console.error('Error fetching irregular physical day:', error)
-    return NextResponse.json({ error: 'Failed to fetch irregular physical day' }, { status: 500 })
+    await logApiError({
+      request,
+      error,
+      operation: 'fetching irregular physical day',
+      context: {
+        irregularPhysicalDayId: id,
+        userId,
+        userDbId: user?.id,
+      },
+      requestId,
+    })
+    return ApiError.internal('fetch irregular physical day', requestId)
   }
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
+  let validatedData: z.infer<typeof updateIrregularPhysicalDaySchema> | null = null
   let id: string | null = null
   let existingIrregularPhysicalDay: {
     id: string
@@ -66,7 +87,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -74,11 +95,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     body = await request.json()
-    const validatedData = updateIrregularPhysicalDaySchema.parse(body)
+    validatedData = updateIrregularPhysicalDaySchema.parse(body)
 
     const { id: paramId } = await params
     id = paramId
@@ -90,7 +111,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!existingIrregularPhysicalDay) {
-      return NextResponse.json({ error: 'Irregular physical day not found' }, { status: 404 })
+      return ApiError.notFound('Irregular physical day', requestId)
     }
 
     // If typeId is being updated, verify the new type belongs to the user
@@ -103,7 +124,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       })
 
       if (!irregularPhysicalType) {
-        return NextResponse.json({ error: 'Irregular physical type not found' }, { status: 404 })
+        return ApiError.notFound('Irregular physical type', requestId)
       }
     }
 
@@ -129,41 +150,46 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(updatedIrregularPhysicalDay)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Validation error updating irregular physical day:', {
-        error: error.issues,
-        requestBody: body,
-        irregularPhysicalDayId: id,
-        userId,
-        userDbId: user?.id,
-        existingIrregularPhysicalDay,
-        endpoint: 'PUT /api/irregular-physical-days/[id]',
+      await logApiError({
+        request,
+        error,
+        operation: 'updating irregular physical day',
+        context: {
+          requestBody: body,
+          irregularPhysicalDayId: id,
+          userId,
+          userDbId: user?.id,
+          validationError: error.issues,
+          existingIrregularPhysicalDay,
+        },
+        requestId,
       })
-      return NextResponse.json(
-        { error: 'Invalid request data', details: error.issues },
-        { status: 400 }
-      )
+      return ApiError.validation(error, requestId)
     }
 
     // Handle unique constraint violation (duplicate date + type for user)
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
-      return NextResponse.json(
-        {
-          error: `Irregular physical day for this date and type already exists. Please choose a different date or type.`,
-        },
-        { status: 409 }
+      return ApiError.conflict(
+        `Irregular physical day for this date and type already exists. Please choose a different date or type.`,
+        requestId
       )
     }
 
-    console.error('Error updating irregular physical day:', {
+    await logApiError({
+      request,
       error,
-      requestBody: body,
-      irregularPhysicalDayId: id,
-      userId,
-      userDbId: user?.id,
-      existingIrregularPhysicalDay,
-      endpoint: 'PUT /api/irregular-physical-days/[id]',
+      operation: 'updating irregular physical day',
+      context: {
+        requestBody: body,
+        irregularPhysicalDayId: id,
+        userId,
+        userDbId: user?.id,
+        validatedData,
+        existingIrregularPhysicalDay,
+      },
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to update irregular physical day' }, { status: 500 })
+    return ApiError.internal('update irregular physical day', requestId)
   }
 }
 
@@ -171,6 +197,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let id: string | null = null
@@ -186,7 +213,7 @@ export async function DELETE(
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -194,7 +221,7 @@ export async function DELETE(
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     const { id: paramId } = await params
@@ -207,7 +234,7 @@ export async function DELETE(
     })
 
     if (!existingIrregularPhysicalDay) {
-      return NextResponse.json({ error: 'Irregular physical day not found' }, { status: 404 })
+      return ApiError.notFound('Irregular physical day', requestId)
     }
 
     await prisma.irregularPhysicalDay.delete({
@@ -216,14 +243,18 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting irregular physical day:', {
+    await logApiError({
+      request,
       error,
-      irregularPhysicalDayId: id,
-      userId,
-      userDbId: user?.id,
-      existingIrregularPhysicalDay,
-      endpoint: 'DELETE /api/irregular-physical-days/[id]',
+      operation: 'deleting irregular physical day',
+      context: {
+        irregularPhysicalDayId: id,
+        userId,
+        userDbId: user?.id,
+        existingIrregularPhysicalDay,
+      },
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to delete irregular physical day' }, { status: 500 })
+    return ApiError.internal('delete irregular physical day', requestId)
   }
 }

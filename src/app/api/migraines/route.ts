@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { PeriodStatus } from '@prisma/client'
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
 
 const createMigraineSchema = z.object({
   startDateTime: z.string().datetime(),
@@ -29,7 +31,8 @@ const createMigraineSchema = z.object({
     .optional(),
 })
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
 
@@ -37,7 +40,7 @@ export async function GET() {
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -45,7 +48,7 @@ export async function GET() {
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     const migraines = await prisma.migraine.findMany({
@@ -97,17 +100,22 @@ export async function GET() {
 
     return NextResponse.json(migraines)
   } catch (error) {
-    console.error('Error fetching migraines:', {
+    await logApiError({
+      request,
       error,
-      userId,
-      userDbId: user?.id,
-      endpoint: 'GET /api/migraines',
+      context: {
+        userId,
+        userDbId: user?.id,
+      },
+      operation: 'fetch migraines',
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to fetch migraines' }, { status: 500 })
+    return ApiError.internal('fetch migraines', requestId)
   }
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
@@ -117,7 +125,7 @@ export async function POST(request: NextRequest) {
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -125,7 +133,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     body = await request.json()
@@ -137,9 +145,17 @@ export async function POST(request: NextRequest) {
 
     // Validate that end time is after start time if provided
     if (endDateTime && endDateTime <= startDateTime) {
-      return NextResponse.json(
-        { error: 'End date/time must be after start date/time' },
-        { status: 400 }
+      return ApiError.validation(
+        {
+          issues: [
+            {
+              code: 'custom',
+              message: 'End date/time must be after start date/time',
+              path: ['endDateTime'],
+            },
+          ],
+        } as z.ZodError,
+        requestId
       )
     }
 
@@ -245,26 +261,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result, { status: 201 })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Validation error creating migraine:', {
-        error: error.issues,
+      await logApiError({
+        request,
+        error,
+        context: {
+          requestBody: body,
+          userId,
+          userDbId: user?.id,
+        },
+        operation: 'validate migraine creation',
+        requestId,
+      })
+      return ApiError.validation(error, requestId)
+    }
+
+    await logApiError({
+      request,
+      error,
+      context: {
         requestBody: body,
         userId,
         userDbId: user?.id,
-        endpoint: 'POST /api/migraines',
-      })
-      return NextResponse.json(
-        { error: 'Invalid request data', details: error.issues },
-        { status: 400 }
-      )
-    }
-
-    console.error('Error creating migraine:', {
-      error,
-      requestBody: body,
-      userId,
-      userDbId: user?.id,
-      endpoint: 'POST /api/migraines',
+      },
+      operation: 'create migraine',
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to create migraine' }, { status: 500 })
+    return ApiError.internal('create migraine', requestId)
   }
 }

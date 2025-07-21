@@ -39,7 +39,7 @@ import { MigraineReliefTypeCard } from '@/components/migraine-relief-type-card'
 import { MigraineReliefTypeForm } from '@/components/migraine-relief-type-form'
 import { MigraineActivityTypeCard } from '@/components/migraine-activity-type-card'
 import { MigraineActivityTypeForm } from '@/components/migraine-activity-type-form'
-import { toast } from 'sonner'
+import { apiFetch, showSuccessToast } from '@/lib/http-utils'
 
 interface BirthControlType {
   id: string
@@ -213,15 +213,12 @@ export default function ManageEventTypesPage() {
   const fetchBirthControlTypes = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/birth-control-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch birth control types')
+      const { data, error } = await apiFetch<BirthControlType[]>('/api/birth-control-types')
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setBirthControlTypes(data)
-    } catch (error) {
-      console.error('Error fetching birth control types:', error)
-      toast.error('Failed to fetch birth control types')
     } finally {
       setLoading(false)
     }
@@ -230,15 +227,14 @@ export default function ManageEventTypesPage() {
   const fetchIrregularPhysicalTypes = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/irregular-physical-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch irregular physical types')
+      const { data, error } = await apiFetch<IrregularPhysicalType[]>(
+        '/api/irregular-physical-types'
+      )
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setIrregularPhysicalTypes(data)
-    } catch (error) {
-      console.error('Error fetching irregular physical types:', error)
-      toast.error('Failed to fetch irregular physical types')
     } finally {
       setLoading(false)
     }
@@ -247,15 +243,12 @@ export default function ManageEventTypesPage() {
   const fetchNormalPhysicalTypes = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/normal-physical-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch normal physical types')
+      const { data, error } = await apiFetch<NormalPhysicalType[]>('/api/normal-physical-types')
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setNormalPhysicalTypes(data)
-    } catch (error) {
-      console.error('Error fetching normal physical types:', error)
-      toast.error('Failed to fetch normal physical types')
     } finally {
       setLoading(false)
     }
@@ -264,15 +257,12 @@ export default function ManageEventTypesPage() {
   const fetchMigraineAttackTypes = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/migraine-attack-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch migraine attack types')
+      const { data, error } = await apiFetch<MigraineAttackType[]>('/api/migraine-attack-types')
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setMigraineAttackTypes(data)
-    } catch (error) {
-      console.error('Error fetching migraine attack types:', error)
-      toast.error('Failed to fetch migraine attack types')
     } finally {
       setLoading(false)
     }
@@ -281,15 +271,12 @@ export default function ManageEventTypesPage() {
   const fetchMigraineSymptomTypes = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/migraine-symptom-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch migraine symptom types')
+      const { data, error } = await apiFetch<MigraineSymptomType[]>('/api/migraine-symptom-types')
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setMigraineSymptomTypes(data)
-    } catch (error) {
-      console.error('Error fetching migraine symptom types:', error)
-      toast.error('Failed to fetch migraine symptom types')
     } finally {
       setLoading(false)
     }
@@ -298,15 +285,12 @@ export default function ManageEventTypesPage() {
   const fetchMigraineTriggerTypes = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/migraine-trigger-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch migraine trigger types')
+      const { data, error } = await apiFetch<MigraineTriggerType[]>('/api/migraine-trigger-types')
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setMigraineTriggerTypes(data)
-    } catch (error) {
-      console.error('Error fetching migraine trigger types:', error)
-      toast.error('Failed to fetch migraine trigger types')
     } finally {
       setLoading(false)
     }
@@ -315,15 +299,14 @@ export default function ManageEventTypesPage() {
   const fetchMigrainePrecognitionTypes = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/migraine-precognition-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch migraine precognition types')
+      const { data, error } = await apiFetch<MigrainePrecognitionType[]>(
+        '/api/migraine-precognition-types'
+      )
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setMigrainePrecognitionTypes(data)
-    } catch (error) {
-      console.error('Error fetching migraine precognition types:', error)
-      toast.error('Failed to fetch migraine precognition types')
     } finally {
       setLoading(false)
     }
@@ -332,15 +315,14 @@ export default function ManageEventTypesPage() {
   const fetchMigraineMedicationTypes = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/migraine-medication-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch migraine medication types')
+      const { data, error } = await apiFetch<MigraineMedicationType[]>(
+        '/api/migraine-medication-types'
+      )
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setMigraineMedicationTypes(data)
-    } catch (error) {
-      console.error('Error fetching migraine medication types:', error)
-      toast.error('Failed to fetch migraine medication types')
     } finally {
       setLoading(false)
     }
@@ -349,15 +331,12 @@ export default function ManageEventTypesPage() {
   const fetchMigraineReliefTypes = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/migraine-relief-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch migraine relief types')
+      const { data, error } = await apiFetch<MigraineReliefType[]>('/api/migraine-relief-types')
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setMigraineReliefTypes(data)
-    } catch (error) {
-      console.error('Error fetching migraine relief types:', error)
-      toast.error('Failed to fetch migraine relief types')
     } finally {
       setLoading(false)
     }
@@ -366,15 +345,12 @@ export default function ManageEventTypesPage() {
   const fetchMigraineActivityTypes = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/migraine-activity-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch migraine activity types')
+      const { data, error } = await apiFetch<MigraineActivityType[]>('/api/migraine-activity-types')
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setMigraineActivityTypes(data)
-    } catch (error) {
-      console.error('Error fetching migraine activity types:', error)
-      toast.error('Failed to fetch migraine activity types')
     } finally {
       setLoading(false)
     }
@@ -386,42 +362,46 @@ export default function ManageEventTypesPage() {
     try {
       if (selectedBirthControlType) {
         // Edit existing type
-        const response = await fetch(`/api/birth-control-types/${selectedBirthControlType.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        })
+        const { data: updatedType, error } = await apiFetch<BirthControlType>(
+          `/api/birth-control-types/${selectedBirthControlType.id}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData),
+          }
+        )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to update birth control type')
+        if (error || !updatedType) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to update birth control type')
         }
 
-        const updatedType = await response.json()
         setBirthControlTypes((prev) =>
           prev.map((type) => (type.id === selectedBirthControlType.id ? updatedType : type))
         )
-        toast.success('Birth control type updated successfully')
+        showSuccessToast('Birth control type updated successfully')
       } else {
         // Create new type
-        const response = await fetch('/api/birth-control-types', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        })
+        const { data: newType, error } = await apiFetch<BirthControlType>(
+          '/api/birth-control-types',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData),
+          }
+        )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to create birth control type')
+        if (error || !newType) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to create birth control type')
         }
 
-        const newType = await response.json()
         setBirthControlTypes((prev) => [...prev, newType])
-        toast.success('Birth control type created successfully')
+        showSuccessToast('Birth control type created successfully')
       }
 
       // Close form and reset selection
@@ -429,7 +409,7 @@ export default function ManageEventTypesPage() {
       setSelectedBirthControlType(undefined)
     } catch (error) {
       console.error('Error with birth control type:', error)
-      toast.error(error instanceof Error ? error.message : 'Operation failed')
+      // Error toast is already shown by apiFetch
       // Don't close form on error - let user retry
     }
   }
@@ -440,7 +420,7 @@ export default function ManageEventTypesPage() {
     try {
       if (selectedIrregularPhysicalType) {
         // Edit existing type
-        const response = await fetch(
+        const { data: updatedType, error } = await apiFetch<IrregularPhysicalType>(
           `/api/irregular-physical-types/${selectedIrregularPhysicalType.id}`,
           {
             method: 'PUT',
@@ -451,34 +431,31 @@ export default function ManageEventTypesPage() {
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to update irregular physical type')
+        if (error || !updatedType) {
+          throw new Error(error || 'Failed to update irregular physical type')
         }
-
-        const updatedType = await response.json()
         setIrregularPhysicalTypes((prev) =>
           prev.map((type) => (type.id === selectedIrregularPhysicalType.id ? updatedType : type))
         )
-        toast.success('Irregular physical type updated successfully')
+        showSuccessToast('Irregular physical type updated successfully')
       } else {
         // Create new type
-        const response = await fetch('/api/irregular-physical-types', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        })
+        const { data: newType, error } = await apiFetch<IrregularPhysicalType>(
+          '/api/irregular-physical-types',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData),
+          }
+        )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to create irregular physical type')
+        if (error || !newType) {
+          throw new Error(error || 'Failed to create irregular physical type')
         }
-
-        const newType = await response.json()
         setIrregularPhysicalTypes((prev) => [...prev, newType])
-        toast.success('Irregular physical type created successfully')
+        showSuccessToast('Irregular physical type created successfully')
       }
 
       // Close form and reset selection
@@ -486,7 +463,7 @@ export default function ManageEventTypesPage() {
       setSelectedIrregularPhysicalType(undefined)
     } catch (error) {
       console.error('Error with irregular physical type:', error)
-      toast.error(error instanceof Error ? error.message : 'Operation failed')
+      console.error(error instanceof Error ? error.message : 'Operation failed')
       // Don't close form on error - let user retry
     }
   }
@@ -497,7 +474,7 @@ export default function ManageEventTypesPage() {
     try {
       if (selectedNormalPhysicalType) {
         // Edit existing type
-        const response = await fetch(
+        const { data: updatedType, error } = await apiFetch<NormalPhysicalType>(
           `/api/normal-physical-types/${selectedNormalPhysicalType.id}`,
           {
             method: 'PUT',
@@ -508,34 +485,31 @@ export default function ManageEventTypesPage() {
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to update normal physical type')
+        if (error || !updatedType) {
+          throw new Error(error || 'Failed to update normal physical type')
         }
-
-        const updatedType = await response.json()
         setNormalPhysicalTypes((prev) =>
           prev.map((type) => (type.id === selectedNormalPhysicalType.id ? updatedType : type))
         )
-        toast.success('Normal physical type updated successfully')
+        showSuccessToast('Normal physical type updated successfully')
       } else {
         // Create new type
-        const response = await fetch('/api/normal-physical-types', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        })
+        const { data: newType, error } = await apiFetch<NormalPhysicalType>(
+          '/api/normal-physical-types',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData),
+          }
+        )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to create normal physical type')
+        if (error || !newType) {
+          throw new Error(error || 'Failed to create normal physical type')
         }
-
-        const newType = await response.json()
         setNormalPhysicalTypes((prev) => [...prev, newType])
-        toast.success('Normal physical type created successfully')
+        showSuccessToast('Normal physical type created successfully')
       }
 
       // Close form and reset selection
@@ -543,7 +517,7 @@ export default function ManageEventTypesPage() {
       setSelectedNormalPhysicalType(undefined)
     } catch (error) {
       console.error('Error with normal physical type:', error)
-      toast.error(error instanceof Error ? error.message : 'Operation failed')
+      console.error(error instanceof Error ? error.message : 'Operation failed')
       // Don't close form on error - let user retry
     }
   }
@@ -554,7 +528,7 @@ export default function ManageEventTypesPage() {
     try {
       if (selectedMigraineAttackType) {
         // Edit existing type
-        const response = await fetch(
+        const { data, error } = await apiFetch<MigraineAttackType>(
           `/api/migraine-attack-types/${selectedMigraineAttackType.id}`,
           {
             method: 'PUT',
@@ -565,19 +539,19 @@ export default function ManageEventTypesPage() {
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to update migraine attack type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to update migraine attack type')
         }
 
-        const updatedType = await response.json()
+        const updatedType = data
         setMigraineAttackTypes((prev) =>
           prev.map((type) => (type.id === selectedMigraineAttackType.id ? updatedType : type))
         )
-        toast.success('Migraine attack type updated successfully')
+        showSuccessToast('Migraine attack type updated successfully')
       } else {
         // Create new type
-        const response = await fetch('/api/migraine-attack-types', {
+        const { data, error } = await apiFetch<MigraineAttackType>('/api/migraine-attack-types', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -585,14 +559,14 @@ export default function ManageEventTypesPage() {
           body: JSON.stringify(formData),
         })
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to create migraine attack type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to create migraine attack type')
         }
 
-        const newType = await response.json()
+        const newType = data
         setMigraineAttackTypes((prev) => [...prev, newType])
-        toast.success('Migraine attack type created successfully')
+        showSuccessToast('Migraine attack type created successfully')
       }
 
       // Close form and reset selection
@@ -600,7 +574,7 @@ export default function ManageEventTypesPage() {
       setSelectedMigraineAttackType(undefined)
     } catch (error) {
       console.error('Error with migraine attack type:', error)
-      toast.error(error instanceof Error ? error.message : 'Operation failed')
+      console.error(error instanceof Error ? error.message : 'Operation failed')
       // Don't close form on error - let user retry
     }
   }
@@ -611,7 +585,7 @@ export default function ManageEventTypesPage() {
     try {
       if (selectedMigraineSymptomType) {
         // Edit existing type
-        const response = await fetch(
+        const { data, error } = await apiFetch<MigraineSymptomType>(
           `/api/migraine-symptom-types/${selectedMigraineSymptomType.id}`,
           {
             method: 'PUT',
@@ -622,19 +596,19 @@ export default function ManageEventTypesPage() {
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to update migraine symptom type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to update migraine symptom type')
         }
 
-        const updatedType = await response.json()
+        const updatedType = data
         setMigraineSymptomTypes((prev) =>
           prev.map((type) => (type.id === selectedMigraineSymptomType.id ? updatedType : type))
         )
-        toast.success('Migraine symptom type updated successfully')
+        showSuccessToast('Migraine symptom type updated successfully')
       } else {
         // Create new type
-        const response = await fetch('/api/migraine-symptom-types', {
+        const { data, error } = await apiFetch<MigraineSymptomType>('/api/migraine-symptom-types', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -642,14 +616,14 @@ export default function ManageEventTypesPage() {
           body: JSON.stringify(formData),
         })
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to create migraine symptom type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to create migraine symptom type')
         }
 
-        const newType = await response.json()
+        const newType = data
         setMigraineSymptomTypes((prev) => [...prev, newType])
-        toast.success('Migraine symptom type created successfully')
+        showSuccessToast('Migraine symptom type created successfully')
       }
 
       // Close form and reset selection
@@ -657,7 +631,7 @@ export default function ManageEventTypesPage() {
       setSelectedMigraineSymptomType(undefined)
     } catch (error) {
       console.error('Error with migraine symptom type:', error)
-      toast.error(error instanceof Error ? error.message : 'Operation failed')
+      console.error(error instanceof Error ? error.message : 'Operation failed')
       // Don't close form on error - let user retry
     }
   }
@@ -668,7 +642,7 @@ export default function ManageEventTypesPage() {
     try {
       if (selectedMigraineTriggerType) {
         // Edit existing type
-        const response = await fetch(
+        const { data, error } = await apiFetch<MigraineTriggerType>(
           `/api/migraine-trigger-types/${selectedMigraineTriggerType.id}`,
           {
             method: 'PUT',
@@ -679,19 +653,19 @@ export default function ManageEventTypesPage() {
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to update migraine trigger type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to update migraine trigger type')
         }
 
-        const updatedType = await response.json()
+        const updatedType = data
         setMigraineTriggerTypes((prev) =>
           prev.map((type) => (type.id === selectedMigraineTriggerType.id ? updatedType : type))
         )
-        toast.success('Migraine trigger type updated successfully')
+        showSuccessToast('Migraine trigger type updated successfully')
       } else {
         // Create new type
-        const response = await fetch('/api/migraine-trigger-types', {
+        const { data, error } = await apiFetch<MigraineTriggerType>('/api/migraine-trigger-types', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -699,14 +673,14 @@ export default function ManageEventTypesPage() {
           body: JSON.stringify(formData),
         })
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to create migraine trigger type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to create migraine trigger type')
         }
 
-        const newType = await response.json()
+        const newType = data
         setMigraineTriggerTypes((prev) => [...prev, newType])
-        toast.success('Migraine trigger type created successfully')
+        showSuccessToast('Migraine trigger type created successfully')
       }
 
       // Close form and reset selection
@@ -714,7 +688,7 @@ export default function ManageEventTypesPage() {
       setSelectedMigraineTriggerType(undefined)
     } catch (error) {
       console.error('Error with migraine trigger type:', error)
-      toast.error(error instanceof Error ? error.message : 'Operation failed')
+      console.error(error instanceof Error ? error.message : 'Operation failed')
       // Don't close form on error - let user retry
     }
   }
@@ -725,7 +699,7 @@ export default function ManageEventTypesPage() {
     try {
       if (selectedMigrainePrecognitionType) {
         // Edit existing type
-        const response = await fetch(
+        const { data, error } = await apiFetch<MigrainePrecognitionType>(
           `/api/migraine-precognition-types/${selectedMigrainePrecognitionType.id}`,
           {
             method: 'PUT',
@@ -736,34 +710,37 @@ export default function ManageEventTypesPage() {
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to update migraine precognition type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to update migraine precognition type')
         }
 
-        const updatedType = await response.json()
+        const updatedType = data
         setMigrainePrecognitionTypes((prev) =>
           prev.map((type) => (type.id === selectedMigrainePrecognitionType.id ? updatedType : type))
         )
-        toast.success('Migraine precognition type updated successfully')
+        showSuccessToast('Migraine precognition type updated successfully')
       } else {
         // Create new type
-        const response = await fetch('/api/migraine-precognition-types', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        })
+        const { data, error } = await apiFetch<MigrainePrecognitionType>(
+          '/api/migraine-precognition-types',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData),
+          }
+        )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to create migraine precognition type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to create migraine precognition type')
         }
 
-        const newType = await response.json()
+        const newType = data
         setMigrainePrecognitionTypes((prev) => [...prev, newType])
-        toast.success('Migraine precognition type created successfully')
+        showSuccessToast('Migraine precognition type created successfully')
       }
 
       // Close form and reset selection
@@ -771,7 +748,7 @@ export default function ManageEventTypesPage() {
       setSelectedMigrainePrecognitionType(undefined)
     } catch (error) {
       console.error('Error with migraine precognition type:', error)
-      toast.error(error instanceof Error ? error.message : 'Operation failed')
+      console.error(error instanceof Error ? error.message : 'Operation failed')
       // Don't close form on error - let user retry
     }
   }
@@ -782,7 +759,7 @@ export default function ManageEventTypesPage() {
     try {
       if (selectedMigraineMedicationType) {
         // Edit existing type
-        const response = await fetch(
+        const { data, error } = await apiFetch<MigraineMedicationType>(
           `/api/migraine-medication-types/${selectedMigraineMedicationType.id}`,
           {
             method: 'PUT',
@@ -793,34 +770,37 @@ export default function ManageEventTypesPage() {
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to update migraine medication type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to update migraine medication type')
         }
 
-        const updatedType = await response.json()
+        const updatedType = data
         setMigraineMedicationTypes((prev) =>
           prev.map((type) => (type.id === selectedMigraineMedicationType.id ? updatedType : type))
         )
-        toast.success('Migraine medication type updated successfully')
+        showSuccessToast('Migraine medication type updated successfully')
       } else {
         // Create new type
-        const response = await fetch('/api/migraine-medication-types', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        })
+        const { data, error } = await apiFetch<MigraineMedicationType>(
+          '/api/migraine-medication-types',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData),
+          }
+        )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to create migraine medication type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to create migraine medication type')
         }
 
-        const newType = await response.json()
+        const newType = data
         setMigraineMedicationTypes((prev) => [...prev, newType])
-        toast.success('Migraine medication type created successfully')
+        showSuccessToast('Migraine medication type created successfully')
       }
 
       // Close form and reset selection
@@ -828,7 +808,7 @@ export default function ManageEventTypesPage() {
       setSelectedMigraineMedicationType(undefined)
     } catch (error) {
       console.error('Error with migraine medication type:', error)
-      toast.error(error instanceof Error ? error.message : 'Operation failed')
+      console.error(error instanceof Error ? error.message : 'Operation failed')
       // Don't close form on error - let user retry
     }
   }
@@ -839,7 +819,7 @@ export default function ManageEventTypesPage() {
     try {
       if (selectedMigraineReliefType) {
         // Edit existing type
-        const response = await fetch(
+        const { data, error } = await apiFetch<MigraineReliefType>(
           `/api/migraine-relief-types/${selectedMigraineReliefType.id}`,
           {
             method: 'PUT',
@@ -850,19 +830,19 @@ export default function ManageEventTypesPage() {
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to update migraine relief type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to update migraine relief type')
         }
 
-        const updatedType = await response.json()
+        const updatedType = data
         setMigraineReliefTypes((prev) =>
           prev.map((type) => (type.id === selectedMigraineReliefType.id ? updatedType : type))
         )
-        toast.success('Migraine relief type updated successfully')
+        showSuccessToast('Migraine relief type updated successfully')
       } else {
         // Create new type
-        const response = await fetch('/api/migraine-relief-types', {
+        const { data, error } = await apiFetch<MigraineReliefType>('/api/migraine-relief-types', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -870,14 +850,14 @@ export default function ManageEventTypesPage() {
           body: JSON.stringify(formData),
         })
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to create migraine relief type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to create migraine relief type')
         }
 
-        const newType = await response.json()
+        const newType = data
         setMigraineReliefTypes((prev) => [...prev, newType])
-        toast.success('Migraine relief type created successfully')
+        showSuccessToast('Migraine relief type created successfully')
       }
 
       // Close form and reset selection
@@ -885,7 +865,7 @@ export default function ManageEventTypesPage() {
       setSelectedMigraineReliefType(undefined)
     } catch (error) {
       console.error('Error with migraine relief type:', error)
-      toast.error(error instanceof Error ? error.message : 'Operation failed')
+      console.error(error instanceof Error ? error.message : 'Operation failed')
       // Don't close form on error - let user retry
     }
   }
@@ -896,7 +876,7 @@ export default function ManageEventTypesPage() {
     try {
       if (selectedMigraineActivityType) {
         // Edit existing type
-        const response = await fetch(
+        const { data, error } = await apiFetch<MigraineActivityType>(
           `/api/migraine-activity-types/${selectedMigraineActivityType.id}`,
           {
             method: 'PUT',
@@ -907,34 +887,37 @@ export default function ManageEventTypesPage() {
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to update migraine activity type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to update migraine activity type')
         }
 
-        const updatedType = await response.json()
+        const updatedType = data
         setMigraineActivityTypes((prev) =>
           prev.map((type) => (type.id === selectedMigraineActivityType.id ? updatedType : type))
         )
-        toast.success('Migraine activity type updated successfully')
+        showSuccessToast('Migraine activity type updated successfully')
       } else {
         // Create new type
-        const response = await fetch('/api/migraine-activity-types', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        })
+        const { data, error } = await apiFetch<MigraineActivityType>(
+          '/api/migraine-activity-types',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData),
+          }
+        )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to create migraine activity type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to create migraine activity type')
         }
 
-        const newType = await response.json()
+        const newType = data
         setMigraineActivityTypes((prev) => [...prev, newType])
-        toast.success('Migraine activity type created successfully')
+        showSuccessToast('Migraine activity type created successfully')
       }
 
       // Close form and reset selection
@@ -942,7 +925,7 @@ export default function ManageEventTypesPage() {
       setSelectedMigraineActivityType(undefined)
     } catch (error) {
       console.error('Error with migraine activity type:', error)
-      toast.error(error instanceof Error ? error.message : 'Operation failed')
+      console.error(error instanceof Error ? error.message : 'Operation failed')
       // Don't close form on error - let user retry
     }
   }
@@ -950,13 +933,16 @@ export default function ManageEventTypesPage() {
   const handleDelete = async () => {
     if (selectedEventType === 'birth-control' && selectedBirthControlType) {
       try {
-        const response = await fetch(`/api/birth-control-types/${selectedBirthControlType.id}`, {
-          method: 'DELETE',
-        })
+        const { data, error } = await apiFetch(
+          `/api/birth-control-types/${selectedBirthControlType.id}`,
+          {
+            method: 'DELETE',
+          }
+        )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to delete birth control type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to delete birth control type')
         }
 
         setBirthControlTypes((prev) =>
@@ -964,23 +950,25 @@ export default function ManageEventTypesPage() {
         )
         setDeleteDialogOpen(false)
         setSelectedBirthControlType(undefined)
-        toast.success('Birth control type deleted successfully')
+        showSuccessToast('Birth control type deleted successfully')
       } catch (error) {
         console.error('Error deleting birth control type:', error)
-        toast.error(error instanceof Error ? error.message : 'Failed to delete birth control type')
+        console.error(
+          error instanceof Error ? error.message : 'Failed to delete birth control type'
+        )
       }
     } else if (selectedEventType === 'irregular-physical' && selectedIrregularPhysicalType) {
       try {
-        const response = await fetch(
+        const { data, error } = await apiFetch(
           `/api/irregular-physical-types/${selectedIrregularPhysicalType.id}`,
           {
             method: 'DELETE',
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to delete irregular physical type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to delete irregular physical type')
         }
 
         setIrregularPhysicalTypes((prev) =>
@@ -988,25 +976,25 @@ export default function ManageEventTypesPage() {
         )
         setDeleteDialogOpen(false)
         setSelectedIrregularPhysicalType(undefined)
-        toast.success('Irregular physical type deleted successfully')
+        showSuccessToast('Irregular physical type deleted successfully')
       } catch (error) {
         console.error('Error deleting irregular physical type:', error)
-        toast.error(
+        console.error(
           error instanceof Error ? error.message : 'Failed to delete irregular physical type'
         )
       }
     } else if (selectedEventType === 'normal-physical' && selectedNormalPhysicalType) {
       try {
-        const response = await fetch(
+        const { data, error } = await apiFetch(
           `/api/normal-physical-types/${selectedNormalPhysicalType.id}`,
           {
             method: 'DELETE',
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to delete normal physical type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to delete normal physical type')
         }
 
         setNormalPhysicalTypes((prev) =>
@@ -1014,25 +1002,25 @@ export default function ManageEventTypesPage() {
         )
         setDeleteDialogOpen(false)
         setSelectedNormalPhysicalType(undefined)
-        toast.success('Normal physical type deleted successfully')
+        showSuccessToast('Normal physical type deleted successfully')
       } catch (error) {
         console.error('Error deleting normal physical type:', error)
-        toast.error(
+        console.error(
           error instanceof Error ? error.message : 'Failed to delete normal physical type'
         )
       }
     } else if (selectedEventType === 'migraine-attack-types' && selectedMigraineAttackType) {
       try {
-        const response = await fetch(
+        const { data, error } = await apiFetch(
           `/api/migraine-attack-types/${selectedMigraineAttackType.id}`,
           {
             method: 'DELETE',
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to delete migraine attack type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to delete migraine attack type')
         }
 
         setMigraineAttackTypes((prev) =>
@@ -1040,25 +1028,25 @@ export default function ManageEventTypesPage() {
         )
         setDeleteDialogOpen(false)
         setSelectedMigraineAttackType(undefined)
-        toast.success('Migraine attack type deleted successfully')
+        showSuccessToast('Migraine attack type deleted successfully')
       } catch (error) {
         console.error('Error deleting migraine attack type:', error)
-        toast.error(
+        console.error(
           error instanceof Error ? error.message : 'Failed to delete migraine attack type'
         )
       }
     } else if (selectedEventType === 'migraine-symptom-types' && selectedMigraineSymptomType) {
       try {
-        const response = await fetch(
+        const { data, error } = await apiFetch(
           `/api/migraine-symptom-types/${selectedMigraineSymptomType.id}`,
           {
             method: 'DELETE',
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to delete migraine symptom type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to delete migraine symptom type')
         }
 
         setMigraineSymptomTypes((prev) =>
@@ -1066,25 +1054,25 @@ export default function ManageEventTypesPage() {
         )
         setDeleteDialogOpen(false)
         setSelectedMigraineSymptomType(undefined)
-        toast.success('Migraine symptom type deleted successfully')
+        showSuccessToast('Migraine symptom type deleted successfully')
       } catch (error) {
         console.error('Error deleting migraine symptom type:', error)
-        toast.error(
+        console.error(
           error instanceof Error ? error.message : 'Failed to delete migraine symptom type'
         )
       }
     } else if (selectedEventType === 'migraine-trigger-types' && selectedMigraineTriggerType) {
       try {
-        const response = await fetch(
+        const { data, error } = await apiFetch(
           `/api/migraine-trigger-types/${selectedMigraineTriggerType.id}`,
           {
             method: 'DELETE',
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to delete migraine trigger type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to delete migraine trigger type')
         }
 
         setMigraineTriggerTypes((prev) =>
@@ -1092,10 +1080,10 @@ export default function ManageEventTypesPage() {
         )
         setDeleteDialogOpen(false)
         setSelectedMigraineTriggerType(undefined)
-        toast.success('Migraine trigger type deleted successfully')
+        showSuccessToast('Migraine trigger type deleted successfully')
       } catch (error) {
         console.error('Error deleting migraine trigger type:', error)
-        toast.error(
+        console.error(
           error instanceof Error ? error.message : 'Failed to delete migraine trigger type'
         )
       }
@@ -1104,16 +1092,16 @@ export default function ManageEventTypesPage() {
       selectedMigrainePrecognitionType
     ) {
       try {
-        const response = await fetch(
+        const { data, error } = await apiFetch(
           `/api/migraine-precognition-types/${selectedMigrainePrecognitionType.id}`,
           {
             method: 'DELETE',
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to delete migraine precognition type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to delete migraine precognition type')
         }
 
         setMigrainePrecognitionTypes((prev) =>
@@ -1121,10 +1109,10 @@ export default function ManageEventTypesPage() {
         )
         setDeleteDialogOpen(false)
         setSelectedMigrainePrecognitionType(undefined)
-        toast.success('Migraine precognition type deleted successfully')
+        showSuccessToast('Migraine precognition type deleted successfully')
       } catch (error) {
         console.error('Error deleting migraine precognition type:', error)
-        toast.error(
+        console.error(
           error instanceof Error ? error.message : 'Failed to delete migraine precognition type'
         )
       }
@@ -1133,16 +1121,16 @@ export default function ManageEventTypesPage() {
       selectedMigraineMedicationType
     ) {
       try {
-        const response = await fetch(
+        const { data, error } = await apiFetch(
           `/api/migraine-medication-types/${selectedMigraineMedicationType.id}`,
           {
             method: 'DELETE',
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to delete migraine medication type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to delete migraine medication type')
         }
 
         setMigraineMedicationTypes((prev) =>
@@ -1150,25 +1138,25 @@ export default function ManageEventTypesPage() {
         )
         setDeleteDialogOpen(false)
         setSelectedMigraineMedicationType(undefined)
-        toast.success('Migraine medication type deleted successfully')
+        showSuccessToast('Migraine medication type deleted successfully')
       } catch (error) {
         console.error('Error deleting migraine medication type:', error)
-        toast.error(
+        console.error(
           error instanceof Error ? error.message : 'Failed to delete migraine medication type'
         )
       }
     } else if (selectedEventType === 'migraine-relief-types' && selectedMigraineReliefType) {
       try {
-        const response = await fetch(
+        const { data, error } = await apiFetch(
           `/api/migraine-relief-types/${selectedMigraineReliefType.id}`,
           {
             method: 'DELETE',
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to delete migraine relief type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to delete migraine relief type')
         }
 
         setMigraineReliefTypes((prev) =>
@@ -1176,25 +1164,25 @@ export default function ManageEventTypesPage() {
         )
         setDeleteDialogOpen(false)
         setSelectedMigraineReliefType(undefined)
-        toast.success('Migraine relief type deleted successfully')
+        showSuccessToast('Migraine relief type deleted successfully')
       } catch (error) {
         console.error('Error deleting migraine relief type:', error)
-        toast.error(
+        console.error(
           error instanceof Error ? error.message : 'Failed to delete migraine relief type'
         )
       }
     } else if (selectedEventType === 'migraine-activity-types' && selectedMigraineActivityType) {
       try {
-        const response = await fetch(
+        const { data, error } = await apiFetch(
           `/api/migraine-activity-types/${selectedMigraineActivityType.id}`,
           {
             method: 'DELETE',
           }
         )
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to delete migraine activity type')
+        if (error || !data) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || 'Failed to delete migraine activity type')
         }
 
         setMigraineActivityTypes((prev) =>
@@ -1202,10 +1190,10 @@ export default function ManageEventTypesPage() {
         )
         setDeleteDialogOpen(false)
         setSelectedMigraineActivityType(undefined)
-        toast.success('Migraine activity type deleted successfully')
+        showSuccessToast('Migraine activity type deleted successfully')
       } catch (error) {
         console.error('Error deleting migraine activity type:', error)
-        toast.error(
+        console.error(
           error instanceof Error ? error.message : 'Failed to delete migraine activity type'
         )
       }

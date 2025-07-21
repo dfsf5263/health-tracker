@@ -2,6 +2,8 @@ import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
 
 const createMigrainePrecognitionTypeSchema = z.object({
   name: z
@@ -11,19 +13,24 @@ const createMigrainePrecognitionTypeSchema = z.object({
     .trim(),
 })
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const requestId = generateRequestId()
+  let userId: string | null = null
+  let user: { id: string } | null = null
+
   try {
-    const { userId } = await auth()
+    const authResult = await auth()
+    userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
-    const user = await prisma.user.findUnique({
+    user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     const migrainePrecognitionTypes = await prisma.migrainePrecognitionType.findMany({
@@ -33,15 +40,22 @@ export async function GET() {
 
     return NextResponse.json(migrainePrecognitionTypes)
   } catch (error) {
-    console.error('Error fetching migraine precognition types:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch migraine precognition types' },
-      { status: 500 }
-    )
+    await logApiError({
+      request,
+      error,
+      operation: 'fetching migraine precognition types',
+      context: {
+        userId,
+        userDbId: user?.id,
+      },
+      requestId,
+    })
+    return ApiError.internal('fetch migraine precognition types', requestId)
   }
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
@@ -51,7 +65,7 @@ export async function POST(request: NextRequest) {
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -59,7 +73,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     body = await request.json()
@@ -75,39 +89,41 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(migrainePrecognitionType, { status: 201 })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Validation error creating migraine precognition type:', {
-        error: error.issues,
-        requestBody: body,
-        userId,
-        userDbId: user?.id,
-        endpoint: 'POST /api/migraine-precognition-types',
+      await logApiError({
+        request,
+        error,
+        operation: 'creating migraine precognition type',
+        context: {
+          requestBody: body,
+          userId,
+          userDbId: user?.id,
+          validationError: error.issues,
+        },
+        requestId,
       })
-      return NextResponse.json(
-        { error: 'Invalid request data', details: error.issues },
-        { status: 400 }
-      )
+      return ApiError.validation(error, requestId)
     }
 
     // Handle unique constraint violation (duplicate name)
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
-      return NextResponse.json(
-        {
-          error: `Migraine precognition type "${validatedData?.name}" already exists. Please use a different name.`,
-        },
-        { status: 409 }
+      return ApiError.conflict(
+        `Migraine precognition type "${validatedData?.name}" already exists. Please use a different name.`,
+        requestId
       )
     }
 
-    console.error('Error creating migraine precognition type:', {
+    await logApiError({
+      request,
       error,
-      requestBody: body,
-      userId,
-      userDbId: user?.id,
-      endpoint: 'POST /api/migraine-precognition-types',
+      operation: 'creating migraine precognition type',
+      context: {
+        requestBody: body,
+        userId,
+        userDbId: user?.id,
+        validatedData,
+      },
+      requestId,
     })
-    return NextResponse.json(
-      { error: 'Failed to create migraine precognition type' },
-      { status: 500 }
-    )
+    return ApiError.internal('create migraine precognition type', requestId)
   }
 }

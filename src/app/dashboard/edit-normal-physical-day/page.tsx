@@ -12,6 +12,7 @@ import {
 } from '@/components/forms/normal-physical-day-form'
 import { NormalPhysicalTypeForm } from '@/components/normal-physical-type-form'
 import { NormalPhysicalDay, NormalPhysicalType } from '@prisma/client'
+import { apiFetch, showSuccessToast } from '@/lib/http-utils'
 
 interface NormalPhysicalDayWithType extends NormalPhysicalDay {
   type: NormalPhysicalType
@@ -52,27 +53,23 @@ function EditNormalPhysicalDayContent() {
     const loadNormalPhysicalDay = async () => {
       try {
         // Fetch both normal physical day and types in parallel
-        const [dayResponse, typesResponse] = await Promise.all([
-          fetch(`/api/normal-physical-days/${normalPhysicalDayId}`),
-          fetch('/api/normal-physical-types'),
+        const [
+          { data: normalPhysicalDay, error: dayError },
+          { data: typesData, error: typesError },
+        ] = await Promise.all([
+          apiFetch<NormalPhysicalDayWithType>(`/api/normal-physical-days/${normalPhysicalDayId}`),
+          apiFetch<NormalPhysicalTypeResponse[]>('/api/normal-physical-types'),
         ])
 
-        if (!dayResponse.ok) {
-          if (dayResponse.status === 404) {
-            toast.error('Normal physical day not found')
-          } else {
-            throw new Error('Failed to fetch normal physical day')
-          }
+        if (dayError || !normalPhysicalDay) {
+          // Error toast is automatically shown by apiFetch
           router.push('/dashboard')
           return
         }
 
-        if (typesResponse.ok) {
-          const typesData = await typesResponse.json()
+        if (!typesError && typesData) {
           setNormalPhysicalTypes(typesData)
         }
-
-        const normalPhysicalDay: NormalPhysicalDayWithType = await dayResponse.json()
 
         // Parse the UTC date correctly to avoid timezone issues
         const npDate = new Date(normalPhysicalDay.date)
@@ -103,8 +100,9 @@ function EditNormalPhysicalDayContent() {
   const handleSubmit = async (data: NormalPhysicalDayFormData) => {
     if (!normalPhysicalDayId) return
 
-    try {
-      const response = await fetch(`/api/normal-physical-days/${normalPhysicalDayId}`, {
+    const { data: updatedDay, error } = await apiFetch(
+      `/api/normal-physical-days/${normalPhysicalDayId}`,
+      {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -114,20 +112,16 @@ function EditNormalPhysicalDayContent() {
           typeId: data.typeId,
           notes: data.notes,
         }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to update normal physical day')
       }
+    )
 
-      toast.success('Normal physical day updated successfully')
-      router.push('/dashboard')
-    } catch (error) {
-      console.error('Error updating normal physical day:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to update normal physical day')
-      throw error
+    if (error || !updatedDay) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to update normal physical day')
     }
+
+    showSuccessToast('Normal physical day updated successfully')
+    router.push('/dashboard')
   }
 
   const handleBack = () => {
@@ -147,30 +141,26 @@ function EditNormalPhysicalDayContent() {
   const handleNormalPhysicalTypeFormSubmit = async (
     formData: Omit<NormalPhysicalTypeResponse, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
   ) => {
-    try {
-      const response = await fetch('/api/normal-physical-types', {
+    const { data: newType, error } = await apiFetch<NormalPhysicalTypeResponse>(
+      '/api/normal-physical-types',
+      {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create normal physical type')
       }
+    )
 
-      const newType = await response.json()
-      setNormalPhysicalTypes((prev) => [...prev, newType])
-      setNormalPhysicalFormOpen(false)
-      setSelectedNormalPhysicalType(undefined)
-      toast.success('Normal physical type created successfully')
-    } catch (error) {
-      console.error('Error creating normal physical type:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to create normal physical type')
-      throw error
+    if (error || !newType) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to create normal physical type')
     }
+
+    setNormalPhysicalTypes((prev) => [...prev, newType])
+    setNormalPhysicalFormOpen(false)
+    setSelectedNormalPhysicalType(undefined)
+    showSuccessToast('Normal physical type created successfully')
   }
 
   if (isLoading) {

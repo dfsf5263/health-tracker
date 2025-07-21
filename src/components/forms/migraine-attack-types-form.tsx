@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useMigraineForm } from './migraine-form-provider'
 import { MigraineAttackTypeForm } from '@/components/migraine-attack-type-form'
-import { toast } from 'sonner'
+import { apiFetch, showSuccessToast } from '@/lib/http-utils'
 
 interface MigraineAttackType {
   id: string
@@ -34,15 +34,12 @@ export function MigraineAttackTypesForm({ onContinue, onBack }: MigraineAttackTy
   const fetchAttackTypes = React.useCallback(async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/migraine-attack-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch attack types')
+      const { data, error } = await apiFetch<MigraineAttackType[]>('/api/migraine-attack-types')
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setAttackTypes(data)
-    } catch (error) {
-      console.error('Error fetching attack types:', error)
-      toast.error('Failed to fetch attack types')
     } finally {
       setLoading(false)
     }
@@ -83,32 +80,27 @@ export function MigraineAttackTypesForm({ onContinue, onBack }: MigraineAttackTy
   const handleFormSubmit = async (
     formData: Omit<MigraineAttackType, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
   ) => {
-    try {
-      const response = await fetch('/api/migraine-attack-types', {
+    const { data: newType, error } = await apiFetch<MigraineAttackType>(
+      '/api/migraine-attack-types',
+      {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create attack type')
       }
+    )
 
-      const newType = await response.json()
-
-      // Add new type to the list while preserving toggle states
-      setAttackTypes((prev) => [...prev, newType])
-      setFormOpen(false)
-      setSelectedAttackType(undefined)
-      toast.success('Attack type created successfully')
-    } catch (error) {
-      console.error('Error creating attack type:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to create attack type')
-      throw error
+    if (error || !newType) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to create attack type')
     }
+
+    // Add new type to the list while preserving toggle states
+    setAttackTypes((prev) => [...prev, newType])
+    setFormOpen(false)
+    setSelectedAttackType(undefined)
+    showSuccessToast('Attack type created successfully')
   }
 
   const handleContinue = () => {

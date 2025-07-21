@@ -1,10 +1,16 @@
 import { headers } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server'
 import { WebhookEvent } from '@clerk/nextjs/server'
 import { Webhook } from 'svix'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { prepopulateUserTypes } from '@/lib/prepopulate-user-types'
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
 
 export async function POST(req: Request) {
+  const requestId = generateRequestId()
+
   // Get the headers
   const headerPayload = await headers()
   const svix_id = headerPayload.get('svix-id')
@@ -13,9 +19,29 @@ export async function POST(req: Request) {
 
   // If there are no headers, error out
   if (!svix_id || !svix_timestamp || !svix_signature) {
-    return new Response('Error occured -- no svix headers', {
-      status: 400,
+    await logApiError({
+      request: req as NextRequest,
+      error: new Error('Missing svix headers'),
+      context: {
+        hasSvixId: !!svix_id,
+        hasSvixTimestamp: !!svix_timestamp,
+        hasSvixSignature: !!svix_signature,
+      },
+      operation: 'validate webhook headers',
+      requestId,
     })
+    return ApiError.validation(
+      {
+        issues: [
+          {
+            code: 'custom',
+            message: 'Missing required svix headers',
+            path: ['headers'],
+          },
+        ],
+      } as z.ZodError,
+      requestId
+    )
   }
 
   // Get the body
@@ -35,10 +61,29 @@ export async function POST(req: Request) {
       'svix-signature': svix_signature,
     }) as WebhookEvent
   } catch (err) {
-    console.error('Error verifying webhook:', err)
-    return new Response('Error occured', {
-      status: 400,
+    await logApiError({
+      request: req as NextRequest,
+      error: err,
+      context: {
+        svix_id,
+        svix_timestamp,
+        hasSignature: !!svix_signature,
+      },
+      operation: 'verify webhook signature',
+      requestId,
     })
+    return ApiError.validation(
+      {
+        issues: [
+          {
+            code: 'custom',
+            message: 'Invalid webhook signature',
+            path: ['signature'],
+          },
+        ],
+      } as z.ZodError,
+      requestId
+    )
   }
 
   // Handle the webhook
@@ -53,8 +98,33 @@ export async function POST(req: Request) {
     )?.email_address
 
     if (!primaryEmail) {
-      console.error('No primary email found for user:', id)
-      return new Response('No primary email found', { status: 400 })
+      await logApiError({
+        request: req as NextRequest,
+        error: new Error('No primary email found'),
+        context: {
+          eventType,
+          clerkUserId: id,
+          emailAddresses: email_addresses.map((e) => ({
+            id: e.id,
+            verified: e.verification?.status,
+          })),
+          primaryEmailAddressId: evt.data.primary_email_address_id,
+        },
+        operation: 'extract primary email',
+        requestId,
+      })
+      return ApiError.validation(
+        {
+          issues: [
+            {
+              code: 'custom',
+              message: 'No primary email found for user',
+              path: ['email_addresses'],
+            },
+          ],
+        } as z.ZodError,
+        requestId
+      )
     }
 
     const upsertData = {
@@ -64,50 +134,115 @@ export async function POST(req: Request) {
       lastName: last_name || null,
     }
 
+    // Track the sync operation for logging
+    let syncOperation = 'unknown'
+
     try {
-      // Create or update user in database
-      const result = await prisma.user.upsert({
+      // Enhanced user sync: Look up by clerkUserId first, then by email, then create
+      let result: { id: string }
+
+      // Step 1: Look for existing user by clerkUserId
+      const existingUserByClerkId = await prisma.user.findUnique({
         where: { clerkUserId: id },
-        create: upsertData,
-        update: {
-          email: primaryEmail,
-          firstName: first_name || null,
-          lastName: last_name || null,
-        },
       })
 
-      // If this is a user creation event, prepopulate their types
-      if (eventType === 'user.created') {
+      if (existingUserByClerkId) {
+        // Update existing user found by clerkUserId
+        result = await prisma.user.update({
+          where: { clerkUserId: id },
+          data: {
+            email: primaryEmail,
+            firstName: first_name || null,
+            lastName: last_name || null,
+          },
+        })
+        syncOperation = 'updated_by_clerk_id'
+        console.log(`Webhook ${eventType}: Updated user by Clerk ID - Request ID: ${requestId}`, {
+          databaseUserId: result.id,
+          clerkUserId: id,
+          email: primaryEmail,
+          operation: syncOperation,
+        })
+      } else {
+        // Step 2: Look for existing user by email
+        const existingUserByEmail = await prisma.user.findUnique({
+          where: { email: primaryEmail },
+        })
+
+        if (existingUserByEmail) {
+          // Update existing user found by email (sync Clerk ID)
+          result = await prisma.user.update({
+            where: { email: primaryEmail },
+            data: {
+              clerkUserId: id,
+              firstName: first_name || null,
+              lastName: last_name || null,
+            },
+          })
+          syncOperation = 'updated_by_email'
+          console.log(
+            `Webhook ${eventType}: Updated user by email, synced Clerk ID - Request ID: ${requestId}`,
+            {
+              databaseUserId: result.id,
+              clerkUserId: id,
+              email: primaryEmail,
+              operation: syncOperation,
+              previousClerkUserId: existingUserByEmail.clerkUserId,
+            }
+          )
+        } else {
+          // Step 3: Create new user
+          result = await prisma.user.create({
+            data: upsertData,
+          })
+          syncOperation = 'created'
+          console.log(`Webhook ${eventType}: Created new user - Request ID: ${requestId}`, {
+            databaseUserId: result.id,
+            clerkUserId: id,
+            email: primaryEmail,
+            operation: syncOperation,
+          })
+        }
+      }
+
+      // If this is a user creation event AND we actually created a new user, prepopulate their types
+      if (eventType === 'user.created' && syncOperation === 'created') {
         try {
           await prepopulateUserTypes(result.id)
         } catch (prepopulationError) {
-          console.error(`=== Type Prepopulation Error ===`)
-          console.error(`Timestamp: ${new Date().toISOString()}`)
-          console.error(`Event Type: ${eventType}`)
-          console.error(`User ID: ${id}`)
-          console.error(`Database User ID: ${result.id}`)
-          console.error(`Prepopulation Error:`, prepopulationError)
-          // Don't re-throw here - user creation succeeded, this is a secondary operation
+          await logApiError({
+            request: req as NextRequest,
+            error: prepopulationError,
+            context: {
+              eventType,
+              clerkUserId: id,
+              databaseUserId: result.id,
+              email: primaryEmail,
+              syncOperation,
+            },
+            operation: 'prepopulate user types',
+            requestId,
+          })
+          // Don't re-throw here - user sync succeeded, this is a secondary operation
         }
       }
     } catch (error) {
-      console.error('=== Webhook Error ===')
-      console.error('Timestamp:', new Date().toISOString())
-      console.error('Event Type:', eventType)
-      console.error('Event Data:', JSON.stringify(evt.data, null, 2))
-      console.error('User ID:', id)
-      console.error('Primary Email:', primaryEmail)
-      console.error('Upsert Data:', JSON.stringify(upsertData, null, 2))
-      console.error('Error:', error)
-      if (error && typeof error === 'object' && 'code' in error) {
-        console.error('Error Code:', error.code)
-      }
-      if (error && typeof error === 'object' && 'meta' in error) {
-        console.error('Error Meta:', error.meta)
-      }
+      await logApiError({
+        request: req as NextRequest,
+        error,
+        context: {
+          eventType,
+          eventData: evt.data,
+          clerkUserId: id,
+          primaryEmail,
+          upsertData,
+          syncOperation: syncOperation || 'unknown',
+        },
+        operation: `webhook ${eventType} user sync`,
+        requestId,
+      })
 
-      // Re-throw the error to maintain the 500 response
-      throw error
+      return ApiError.internal(`webhook ${eventType}`, requestId)
     }
   }
 
@@ -124,21 +259,25 @@ export async function POST(req: Request) {
       if (error && typeof error === 'object' && 'code' in error && error.code === 'P2025') {
         // User doesn't exist - this is fine, deletion is idempotent
         // No logging needed as the desired outcome is already achieved
-        return new Response('Webhook processed', { status: 200 })
+        return NextResponse.json({ message: 'Webhook processed' }, { status: 200 })
       }
 
       // For any other error, log and re-throw
-      console.error('=== Webhook Delete Error ===')
-      console.error('Timestamp:', new Date().toISOString())
-      console.error('Event Type:', eventType)
-      console.error('Event Data:', JSON.stringify(evt.data, null, 2))
-      console.error('User ID to delete:', id)
-      console.error('Error:', error)
+      await logApiError({
+        request: req as NextRequest,
+        error,
+        context: {
+          eventType,
+          eventData: evt.data,
+          clerkUserIdToDelete: id,
+        },
+        operation: 'webhook user.deleted',
+        requestId,
+      })
 
-      // Re-throw the error to maintain the 500 response
-      throw error
+      return ApiError.internal('webhook user.deleted', requestId)
     }
   }
 
-  return new Response('Webhook processed', { status: 200 })
+  return NextResponse.json({ message: 'Webhook processed' }, { status: 200 })
 }

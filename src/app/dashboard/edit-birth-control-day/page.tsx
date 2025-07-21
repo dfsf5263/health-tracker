@@ -12,6 +12,7 @@ import {
 } from '@/components/forms/birth-control-day-form'
 import { BirthControlTypeForm } from '@/components/birth-control-type-form'
 import { BirthControlDay, BirthControlType } from '@prisma/client'
+import { apiFetch, showSuccessToast } from '@/lib/http-utils'
 
 interface BirthControlDayWithType extends BirthControlDay {
   type: BirthControlType
@@ -55,27 +56,21 @@ function EditBirthControlDayContent() {
     const loadBirthControlDay = async () => {
       try {
         // Fetch both birth control day and types in parallel
-        const [dayResponse, typesResponse] = await Promise.all([
-          fetch(`/api/birth-control-days/${birthControlDayId}`),
-          fetch('/api/birth-control-types'),
-        ])
+        const [{ data: birthControlDay, error: dayError }, { data: typesData, error: typesError }] =
+          await Promise.all([
+            apiFetch<BirthControlDayWithType>(`/api/birth-control-days/${birthControlDayId}`),
+            apiFetch<BirthControlTypeResponse[]>('/api/birth-control-types'),
+          ])
 
-        if (!dayResponse.ok) {
-          if (dayResponse.status === 404) {
-            toast.error('Birth control day not found')
-          } else {
-            throw new Error('Failed to fetch birth control day')
-          }
+        if (dayError || !birthControlDay) {
+          // Error toast is automatically shown by apiFetch
           router.push('/dashboard')
           return
         }
 
-        if (typesResponse.ok) {
-          const typesData = await typesResponse.json()
+        if (!typesError && typesData) {
           setBirthControlTypes(typesData)
         }
-
-        const birthControlDay: BirthControlDayWithType = await dayResponse.json()
 
         // Parse the UTC date correctly to avoid timezone issues
         const bcDate = new Date(birthControlDay.date)
@@ -106,8 +101,9 @@ function EditBirthControlDayContent() {
   const handleSubmit = async (data: BirthControlDayFormData) => {
     if (!birthControlDayId) return
 
-    try {
-      const response = await fetch(`/api/birth-control-days/${birthControlDayId}`, {
+    const { data: updatedDay, error } = await apiFetch(
+      `/api/birth-control-days/${birthControlDayId}`,
+      {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -117,20 +113,16 @@ function EditBirthControlDayContent() {
           typeId: data.typeId,
           notes: data.notes,
         }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to update birth control day')
       }
+    )
 
-      toast.success('Birth control day updated successfully')
-      router.push('/dashboard')
-    } catch (error) {
-      console.error('Error updating birth control day:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to update birth control day')
-      throw error
+    if (error || !updatedDay) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to update birth control day')
     }
+
+    showSuccessToast('Birth control day updated successfully')
+    router.push('/dashboard')
   }
 
   const handleBack = () => {
@@ -150,30 +142,26 @@ function EditBirthControlDayContent() {
   const handleBirthControlTypeFormSubmit = async (
     formData: Omit<BirthControlTypeResponse, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
   ) => {
-    try {
-      const response = await fetch('/api/birth-control-types', {
+    const { data: newType, error } = await apiFetch<BirthControlTypeResponse>(
+      '/api/birth-control-types',
+      {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create birth control type')
       }
+    )
 
-      const newType = await response.json()
-      setBirthControlTypes((prev) => [...prev, newType])
-      setBirthControlFormOpen(false)
-      setSelectedBirthControlType(undefined)
-      toast.success('Birth control type created successfully')
-    } catch (error) {
-      console.error('Error creating birth control type:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to create birth control type')
-      throw error
+    if (error || !newType) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to create birth control type')
     }
+
+    setBirthControlTypes((prev) => [...prev, newType])
+    setBirthControlFormOpen(false)
+    setSelectedBirthControlType(undefined)
+    showSuccessToast('Birth control type created successfully')
   }
 
   if (isLoading) {

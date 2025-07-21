@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Calendar, Clock, Hash, Activity } from 'lucide-react'
+import { apiFetch } from '@/lib/http-utils'
 
 interface PeriodDay {
   id: string
@@ -37,11 +38,13 @@ export default function AnalyticsPage() {
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const response = await fetch('/api/analytics')
-        if (!response.ok) {
-          throw new Error('Failed to fetch analytics')
+        const { data: analyticsData, error: fetchError } =
+          await apiFetch<AnalyticsData>('/api/analytics')
+        if (fetchError || !analyticsData) {
+          // Error toast is automatically shown by apiFetch
+          setError(fetchError || 'Failed to load analytics')
+          return
         }
-        const analyticsData = await response.json()
         setData(analyticsData)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load analytics')
@@ -122,7 +125,7 @@ export default function AnalyticsPage() {
     <div className="flex-1 space-y-6 p-4 pt-6">
       {/* Overview Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className='gap-1'>
+        <Card className="gap-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Average Cycle Length</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -131,13 +134,11 @@ export default function AnalyticsPage() {
             <div className="text-2xl font-bold">
               {data.averages.cycleLength ? `${data.averages.cycleLength.toFixed(1)} days` : 'N/A'}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Time between cycle starts
-            </p>
+            <p className="text-xs text-muted-foreground">Time between cycle starts</p>
           </CardContent>
         </Card>
 
-        <Card className='gap-1'>
+        <Card className="gap-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Average Period Length</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
@@ -146,40 +147,36 @@ export default function AnalyticsPage() {
             <div className="text-2xl font-bold">
               {data.averages.periodLength ? `${data.averages.periodLength.toFixed(1)} days` : 'N/A'}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Duration of periods
-            </p>
+            <p className="text-xs text-muted-foreground">Duration of periods</p>
           </CardContent>
         </Card>
 
-        <Card className='gap-1'>
+        <Card className="gap-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Cycles</CardTitle>
             <Hash className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.totalCycles}</div>
-            <p className="text-xs text-muted-foreground">
-              Cycles tracked
-            </p>
+            <p className="text-xs text-muted-foreground">Cycles tracked</p>
           </CardContent>
         </Card>
 
-        <Card className='gap-1'>
+        <Card className="gap-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Last Cycle</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {data.lastSixCycles.length > 0 
-                ? new Date(data.lastSixCycles[0].startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                : 'N/A'
-              }
+              {data.lastSixCycles.length > 0
+                ? new Date(data.lastSixCycles[0].startDate).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                  })
+                : 'N/A'}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Most recent cycle start
-            </p>
+            <p className="text-xs text-muted-foreground">Most recent cycle start</p>
           </CardContent>
         </Card>
       </div>
@@ -200,49 +197,53 @@ export default function AnalyticsPage() {
               {data.lastSixCycles.map((cycle, index) => (
                 <div key={cycle.id} className="border-l-2 border-muted pl-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-medium">
-                      Cycle {data.lastSixCycles.length - index}
-                    </h3>
+                    <h3 className="font-medium">Cycle {data.lastSixCycles.length - index}</h3>
                     <span className="text-sm text-muted-foreground">
-                      {new Date(cycle.startDate).toLocaleDateString()} - {new Date(cycle.endDate).toLocaleDateString()}
+                      {new Date(cycle.startDate).toLocaleDateString()} -{' '}
+                      {new Date(cycle.endDate).toLocaleDateString()}
                     </span>
                   </div>
-                  
+
                   <div className="flex flex-wrap gap-1">
                     {(() => {
                       const startDate = new Date(cycle.startDate)
                       const endDate = new Date(cycle.endDate)
                       const days = []
-                      
+
                       for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
                         const currentDate = new Date(d)
                         const dateString = currentDate.toISOString().split('T')[0]
-                        const periodDay = cycle.periodDays.find(pd => pd.date.split('T')[0] === dateString)
-                        
+                        const periodDay = cycle.periodDays.find(
+                          (pd) => pd.date.split('T')[0] === dateString
+                        )
+
                         days.push(
                           <div
                             key={dateString}
                             className={`w-6 h-6 rounded border text-xs flex items-center justify-center relative ${
-                              periodDay 
+                              periodDay
                                 ? getFlowColor(periodDay.color)
                                 : 'bg-transparent border-gray-300'
                             }`}
-                            title={periodDay 
-                              ? `${currentDate.toLocaleDateString()}: ${periodDay.flow} (${periodDay.color})`
-                              : `${currentDate.toLocaleDateString()}: No flow`
+                            title={
+                              periodDay
+                                ? `${currentDate.toLocaleDateString()}: ${periodDay.flow} (${periodDay.color})`
+                                : `${currentDate.toLocaleDateString()}: No flow`
                             }
                           >
                             {periodDay && (
-                              <div className={`rounded-full bg-white ${getFlowCircleSize(periodDay.flow)}`} />
+                              <div
+                                className={`rounded-full bg-white ${getFlowCircleSize(periodDay.flow)}`}
+                              />
                             )}
                           </div>
                         )
                       }
-                      
+
                       return days
                     })()}
                   </div>
-                  
+
                   <div className="mt-2 text-xs text-muted-foreground">
                     {cycle.periodDays.length} days with flow
                   </div>
@@ -252,7 +253,6 @@ export default function AnalyticsPage() {
           )}
         </CardContent>
       </Card>
-
     </div>
   )
 }

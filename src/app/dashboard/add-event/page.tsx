@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Carousel, CarouselContent, CarouselItem, CarouselApi } from '@/components/ui/carousel'
 import { Progress } from '@/components/ui/progress'
@@ -38,6 +37,7 @@ import { MigraineReliefTypesForm } from '@/components/forms/migraine-relief-type
 import { MigraineActivityTypesForm } from '@/components/forms/migraine-activity-types-form'
 import { MigraineLocationTypesForm } from '@/components/forms/migraine-location-types-form'
 import { MigraineNotesForm } from '@/components/forms/migraine-notes-form'
+import { apiFetch, showSuccessToast } from '@/lib/http-utils'
 
 type EventType = 'period' | 'birth-control' | 'irregular-physical' | 'normal-physical' | 'migraine'
 
@@ -199,15 +199,12 @@ function AddEventPageInner({
   const fetchBirthControlTypes = React.useCallback(async () => {
     setLoadingBirthControlTypes(true)
     try {
-      const response = await fetch('/api/birth-control-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch birth control types')
+      const { data, error } = await apiFetch<BirthControlType[]>('/api/birth-control-types')
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setBirthControlTypes(data)
-    } catch (error) {
-      console.error('Error fetching birth control types:', error)
-      toast.error('Failed to fetch birth control types')
     } finally {
       setLoadingBirthControlTypes(false)
     }
@@ -217,15 +214,14 @@ function AddEventPageInner({
   const fetchIrregularPhysicalTypes = React.useCallback(async () => {
     setLoadingIrregularPhysicalTypes(true)
     try {
-      const response = await fetch('/api/irregular-physical-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch irregular physical types')
+      const { data, error } = await apiFetch<IrregularPhysicalType[]>(
+        '/api/irregular-physical-types'
+      )
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setIrregularPhysicalTypes(data)
-    } catch (error) {
-      console.error('Error fetching irregular physical types:', error)
-      toast.error('Failed to fetch irregular physical types')
     } finally {
       setLoadingIrregularPhysicalTypes(false)
     }
@@ -235,15 +231,12 @@ function AddEventPageInner({
   const fetchNormalPhysicalTypes = React.useCallback(async () => {
     setLoadingNormalPhysicalTypes(true)
     try {
-      const response = await fetch('/api/normal-physical-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch normal physical types')
+      const { data, error } = await apiFetch<NormalPhysicalType[]>('/api/normal-physical-types')
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setNormalPhysicalTypes(data)
-    } catch (error) {
-      console.error('Error fetching normal physical types:', error)
-      toast.error('Failed to fetch normal physical types')
     } finally {
       setLoadingNormalPhysicalTypes(false)
     }
@@ -372,60 +365,48 @@ function AddEventPageInner({
   }
 
   const handlePeriodDaySubmit = async (data: PeriodDayFormData) => {
-    try {
-      const response = await fetch('/api/period-days', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          date: `${data.date.getFullYear()}-${String(data.date.getMonth() + 1).padStart(2, '0')}-${String(data.date.getDate()).padStart(2, '0')}`,
-          flow: data.flow,
-          color: data.color,
-          notes: data.notes,
-        }),
-      })
+    const { data: savedDay, error } = await apiFetch('/api/period-days', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        date: `${data.date.getFullYear()}-${String(data.date.getMonth() + 1).padStart(2, '0')}-${String(data.date.getDate()).padStart(2, '0')}`,
+        flow: data.flow,
+        color: data.color,
+        notes: data.notes,
+      }),
+    })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to save period day')
-      }
-
-      toast.success('Period day saved successfully')
-      router.push('/dashboard')
-    } catch (error) {
-      console.error('Error saving period day:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to save period day')
-      throw error
+    if (error || !savedDay) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to save period day')
     }
+
+    showSuccessToast('Period day saved successfully')
+    router.push('/dashboard')
   }
 
   const handleBirthControlDaySubmit = async (data: BirthControlDayFormData) => {
-    try {
-      const response = await fetch('/api/birth-control-days', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          date: `${data.date.getFullYear()}-${String(data.date.getMonth() + 1).padStart(2, '0')}-${String(data.date.getDate()).padStart(2, '0')}`,
-          typeId: data.typeId,
-          notes: data.notes,
-        }),
-      })
+    const { data: savedDay, error } = await apiFetch('/api/birth-control-days', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        date: `${data.date.getFullYear()}-${String(data.date.getMonth() + 1).padStart(2, '0')}-${String(data.date.getDate()).padStart(2, '0')}`,
+        typeId: data.typeId,
+        notes: data.notes,
+      }),
+    })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to save birth control day')
-      }
-
-      toast.success('Birth control day saved successfully')
-      router.push('/dashboard')
-    } catch (error) {
-      console.error('Error saving birth control day:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to save birth control day')
-      throw error
+    if (error || !savedDay) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to save birth control day')
     }
+
+    showSuccessToast('Birth control day saved successfully')
+    router.push('/dashboard')
   }
 
   const handleCreateNewBirthControlType = () => {
@@ -461,146 +442,117 @@ function AddEventPageInner({
   const handleBirthControlTypeFormSubmit = async (
     formData: Omit<BirthControlType, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
   ) => {
-    try {
-      const response = await fetch('/api/birth-control-types', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      })
+    const { data: newType, error } = await apiFetch<BirthControlType>('/api/birth-control-types', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(formData),
+    })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create birth control type')
-      }
-
-      const newType = await response.json()
-      setBirthControlTypes((prev) => [...prev, newType])
-      setBirthControlFormOpen(false)
-      setSelectedBirthControlType(undefined)
-      toast.success('Birth control type created successfully')
-    } catch (error) {
-      console.error('Error creating birth control type:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to create birth control type')
-      throw error
+    if (error || !newType) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to create birth control type')
     }
+
+    setBirthControlTypes((prev) => [...prev, newType])
+    setBirthControlFormOpen(false)
+    setSelectedBirthControlType(undefined)
+    showSuccessToast('Birth control type created successfully')
   }
 
   const handleIrregularPhysicalTypeFormSubmit = async (
     formData: Omit<IrregularPhysicalType, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
   ) => {
-    try {
-      const response = await fetch('/api/irregular-physical-types', {
+    const { data: newType, error } = await apiFetch<IrregularPhysicalType>(
+      '/api/irregular-physical-types',
+      {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create irregular physical type')
       }
+    )
 
-      const newType = await response.json()
-      setIrregularPhysicalTypes((prev) => [...prev, newType])
-      setIrregularPhysicalFormOpen(false)
-      setSelectedIrregularPhysicalType(undefined)
-      toast.success('Irregular physical type created successfully')
-    } catch (error) {
-      console.error('Error creating irregular physical type:', error)
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to create irregular physical type'
-      )
-      throw error
+    if (error || !newType) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to create irregular physical type')
     }
+
+    setIrregularPhysicalTypes((prev) => [...prev, newType])
+    setIrregularPhysicalFormOpen(false)
+    setSelectedIrregularPhysicalType(undefined)
+    showSuccessToast('Irregular physical type created successfully')
   }
 
   const handleNormalPhysicalTypeFormSubmit = async (
     formData: Omit<NormalPhysicalType, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
   ) => {
-    try {
-      const response = await fetch('/api/normal-physical-types', {
+    const { data: newType, error } = await apiFetch<NormalPhysicalType>(
+      '/api/normal-physical-types',
+      {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create normal physical type')
       }
+    )
 
-      const newType = await response.json()
-      setNormalPhysicalTypes((prev) => [...prev, newType])
-      setNormalPhysicalFormOpen(false)
-      setSelectedNormalPhysicalType(undefined)
-      toast.success('Normal physical type created successfully')
-    } catch (error) {
-      console.error('Error creating normal physical type:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to create normal physical type')
-      throw error
+    if (error || !newType) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to create normal physical type')
     }
+
+    setNormalPhysicalTypes((prev) => [...prev, newType])
+    setNormalPhysicalFormOpen(false)
+    setSelectedNormalPhysicalType(undefined)
+    showSuccessToast('Normal physical type created successfully')
   }
 
   const handleIrregularPhysicalDaySubmit = async (data: IrregularPhysicalDayFormData) => {
-    try {
-      const response = await fetch('/api/irregular-physical-days', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          date: `${data.date.getFullYear()}-${String(data.date.getMonth() + 1).padStart(2, '0')}-${String(data.date.getDate()).padStart(2, '0')}`,
-          typeId: data.typeId,
-          notes: data.notes,
-        }),
-      })
+    const { data: savedDay, error } = await apiFetch('/api/irregular-physical-days', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        date: `${data.date.getFullYear()}-${String(data.date.getMonth() + 1).padStart(2, '0')}-${String(data.date.getDate()).padStart(2, '0')}`,
+        typeId: data.typeId,
+        notes: data.notes,
+      }),
+    })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to save irregular physical day')
-      }
-
-      toast.success('Irregular physical day saved successfully')
-      router.push('/dashboard')
-    } catch (error) {
-      console.error('Error saving irregular physical day:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to save irregular physical day')
-      throw error
+    if (error || !savedDay) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to save irregular physical day')
     }
+
+    showSuccessToast('Irregular physical day saved successfully')
+    router.push('/dashboard')
   }
 
   const handleNormalPhysicalDaySubmit = async (data: NormalPhysicalDayFormData) => {
-    try {
-      const response = await fetch('/api/normal-physical-days', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          date: `${data.date.getFullYear()}-${String(data.date.getMonth() + 1).padStart(2, '0')}-${String(data.date.getDate()).padStart(2, '0')}`,
-          typeId: data.typeId,
-          notes: data.notes,
-        }),
-      })
+    const { data: savedDay, error } = await apiFetch('/api/normal-physical-days', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        date: `${data.date.getFullYear()}-${String(data.date.getMonth() + 1).padStart(2, '0')}-${String(data.date.getDate()).padStart(2, '0')}`,
+        typeId: data.typeId,
+        notes: data.notes,
+      }),
+    })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to save normal physical day')
-      }
-
-      toast.success('Normal physical day saved successfully')
-      router.push('/dashboard')
-    } catch (error) {
-      console.error('Error saving normal physical day:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to save normal physical day')
-      throw error
+    if (error || !savedDay) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to save normal physical day')
     }
+
+    showSuccessToast('Normal physical day saved successfully')
+    router.push('/dashboard')
   }
 
   const progress = calculateFlowProgress()

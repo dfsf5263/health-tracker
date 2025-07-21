@@ -66,3 +66,89 @@ prisma/
 - **Audit Trails**: All models include `createdAt` and `updatedAt` timestamps
 - **Referential Integrity**: Proper foreign key relationships with cascading rules
 - **Singular Naming**: All models are named in the singular context
+
+### API Route Guidelines
+
+**All API routes (`src/app/api/**/*.ts`) must follow these patterns for consistent error handling, logging, and responses:**
+
+#### Required Imports
+```typescript
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
+```
+
+#### Request ID Generation
+- **Every API route** must generate a unique request ID: `const requestId = generateRequestId()`
+- Pass `requestId` to all error responses and logging calls
+
+#### Error Handling Pattern
+- **✅ DO**: Use `ApiError.*` methods for all error responses
+  ```typescript
+  return ApiError.unauthorized(requestId)
+  return ApiError.notFound('Resource name', requestId)
+  return ApiError.validation(zodError, requestId)
+  return ApiError.internal('operation name', requestId)
+  ```
+- **❌ DON'T**: Use raw `NextResponse.json()` with error status codes
+- **❌ DON'T**: Use raw `Response()` objects for errors
+
+#### Error Logging Pattern
+- **All errors** must be logged using `logApiError()` before returning error responses
+- Include relevant context: `userId`, `userDbId`, request body, operation parameters
+- Specify clear operation descriptions for debugging
+
+#### Validation Error Handling
+- Use `ApiError.validation(zodError, requestId)` for Zod validation failures
+- Log validation errors with request body context before returning
+
+### Frontend API Calling Guidelines
+
+**All frontend API calls must use the `apiFetch` utility for consistent error handling and user feedback:**
+
+#### Required Import
+```typescript
+import { apiFetch, showSuccessToast } from '@/lib/http-utils'
+```
+
+#### Error Handling Pattern
+- **✅ DO**: Use `apiFetch()` for all API calls - errors are automatically shown to users with HTTP status codes and request IDs
+- **❌ DON'T**: Use raw `fetch()` calls or manual error handling
+
+#### GET Requests Pattern
+```typescript
+const { data, error } = await apiFetch<ExpectedType[]>('/api/endpoint')
+if (error || !data) {
+  // Error toast automatically shown with HTTP status + request ID
+  return
+}
+// Use data safely (TypeScript knows it's not null)
+setItems(data)
+```
+
+#### POST/PUT/DELETE Requests Pattern
+```typescript
+const { data, error } = await apiFetch<ResponseType>('/api/endpoint', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(requestData),
+})
+
+if (error || !data) {
+  // Error toast automatically shown
+  throw new Error(error || 'Operation failed')
+}
+
+// Success case
+showSuccessToast('Operation completed successfully')
+```
+
+#### Type Safety Requirements
+- Always provide TypeScript generics: `apiFetch<ExpectedType>()`
+- Check for both `error` and `!data` before using response
+- Use proper null checks to satisfy TypeScript strict mode
+
+#### User Experience Benefits
+- **Consistent Error Messages**: All API errors show as toasts with format "Error 400: Message" 
+- **Request ID Tracking**: Each error toast includes request ID for backend log correlation
+- **Status Code Context**: Users see HTTP status codes for technical troubleshooting
+- **Automatic Handling**: No need for manual try/catch blocks or custom error toasts

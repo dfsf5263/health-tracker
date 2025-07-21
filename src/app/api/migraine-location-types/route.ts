@@ -1,7 +1,11 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const requestId = generateRequestId()
+
   try {
     const migraineLocationTypes = await prisma.migraineLocationType.findMany({
       orderBy: { name: 'asc' },
@@ -9,7 +13,12 @@ export async function GET() {
 
     return NextResponse.json(migraineLocationTypes)
   } catch (error) {
-    console.error('Error fetching migraine location types:', error)
-    return NextResponse.json({ error: 'Failed to fetch migraine location types' }, { status: 500 })
+    await logApiError({
+      request,
+      error,
+      operation: 'fetching migraine location types',
+      requestId,
+    })
+    return ApiError.internal('fetch migraine location types', requestId)
   }
 }

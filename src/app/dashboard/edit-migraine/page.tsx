@@ -2,7 +2,7 @@
 
 import React, { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { toast } from 'sonner'
+import { apiFetch } from '@/lib/http-utils'
 import { Carousel, CarouselContent, CarouselItem, CarouselApi } from '@/components/ui/carousel'
 import { Progress } from '@/components/ui/progress'
 import {
@@ -146,19 +146,26 @@ function EditMigraineContent() {
       fetchedRef.current = true
       try {
         console.log('Fetching migraine:', migraineId)
-        const response = await fetch(`/api/migraines/${migraineId}`)
+        const { data: migraine, error } = await apiFetch<MigraineWithRelationships>(
+          `/api/migraines/${migraineId}`
+        )
 
-        if (response.status === 404) {
+        if (error) {
+          if (error.includes('404') || error.includes('not found')) {
+            setError('Migraine not found. It may have been deleted.')
+          } else {
+            setError('Failed to load migraine data. Please try again.')
+          }
+          setIsLoading(false)
+          return
+        }
+
+        if (!migraine) {
           setError('Migraine not found. It may have been deleted.')
           setIsLoading(false)
           return
         }
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch migraine: ${response.status} ${response.statusText}`)
-        }
-
-        const migraine: MigraineWithRelationships = await response.json()
         console.log('Successfully loaded migraine:', migraine.id)
 
         setMigraineData(migraine)
@@ -187,7 +194,7 @@ function EditMigraineContent() {
   // Redirect on error
   React.useEffect(() => {
     if (error) {
-      toast.error(error)
+      console.error(error)
       router.push('/dashboard')
     }
   }, [error, router])

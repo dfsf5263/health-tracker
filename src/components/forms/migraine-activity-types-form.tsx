@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useMigraineForm } from './migraine-form-provider'
 import { MigraineActivityTypeForm } from '@/components/migraine-activity-type-form'
-import { toast } from 'sonner'
+import { apiFetch, showSuccessToast } from '@/lib/http-utils'
 
 interface MigraineActivityType {
   id: string
@@ -36,15 +36,12 @@ export function MigraineActivityTypesForm({ onContinue, onBack }: MigraineActivi
   const fetchActivityTypes = React.useCallback(async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/migraine-activity-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch activity types')
+      const { data, error } = await apiFetch<MigraineActivityType[]>('/api/migraine-activity-types')
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setActivityTypes(data)
-    } catch (error) {
-      console.error('Error fetching activity types:', error)
-      toast.error('Failed to fetch activity types')
     } finally {
       setLoading(false)
     }
@@ -85,32 +82,27 @@ export function MigraineActivityTypesForm({ onContinue, onBack }: MigraineActivi
   const handleFormSubmit = async (
     formData: Omit<MigraineActivityType, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
   ) => {
-    try {
-      const response = await fetch('/api/migraine-activity-types', {
+    const { data: newType, error } = await apiFetch<MigraineActivityType>(
+      '/api/migraine-activity-types',
+      {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create activity type')
       }
+    )
 
-      const newType = await response.json()
-
-      // Add new type to the list while preserving toggle states
-      setActivityTypes((prev) => [...prev, newType])
-      setFormOpen(false)
-      setSelectedActivityType(undefined)
-      toast.success('Activity type created successfully')
-    } catch (error) {
-      console.error('Error creating activity type:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to create activity type')
-      throw error
+    if (error || !newType) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to create activity type')
     }
+
+    // Add new type to the list while preserving toggle states
+    setActivityTypes((prev) => [...prev, newType])
+    setFormOpen(false)
+    setSelectedActivityType(undefined)
+    showSuccessToast('Activity type created successfully')
   }
 
   const handleContinue = () => {

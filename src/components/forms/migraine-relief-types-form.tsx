@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useMigraineForm } from './migraine-form-provider'
 import { MigraineReliefTypeForm } from '@/components/migraine-relief-type-form'
-import { toast } from 'sonner'
+import { apiFetch, showSuccessToast } from '@/lib/http-utils'
 
 interface MigraineReliefType {
   id: string
@@ -34,15 +34,12 @@ export function MigraineReliefTypesForm({ onContinue, onBack }: MigraineReliefTy
   const fetchReliefTypes = React.useCallback(async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/migraine-relief-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch relief types')
+      const { data, error } = await apiFetch<MigraineReliefType[]>('/api/migraine-relief-types')
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setReliefTypes(data)
-    } catch (error) {
-      console.error('Error fetching relief types:', error)
-      toast.error('Failed to fetch relief types')
     } finally {
       setLoading(false)
     }
@@ -83,32 +80,27 @@ export function MigraineReliefTypesForm({ onContinue, onBack }: MigraineReliefTy
   const handleFormSubmit = async (
     formData: Omit<MigraineReliefType, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
   ) => {
-    try {
-      const response = await fetch('/api/migraine-relief-types', {
+    const { data: newType, error } = await apiFetch<MigraineReliefType>(
+      '/api/migraine-relief-types',
+      {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create relief type')
       }
+    )
 
-      const newType = await response.json()
-
-      // Add new type to the list while preserving toggle states
-      setReliefTypes((prev) => [...prev, newType])
-      setFormOpen(false)
-      setSelectedReliefType(undefined)
-      toast.success('Relief type created successfully')
-    } catch (error) {
-      console.error('Error creating relief type:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to create relief type')
-      throw error
+    if (error || !newType) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to create relief type')
     }
+
+    // Add new type to the list while preserving toggle states
+    setReliefTypes((prev) => [...prev, newType])
+    setFormOpen(false)
+    setSelectedReliefType(undefined)
+    showSuccessToast('Relief type created successfully')
   }
 
   const handleContinue = () => {

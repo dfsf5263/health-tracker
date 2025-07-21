@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useMigraineForm } from './migraine-form-provider'
-import { toast } from 'sonner'
+import { apiFetch } from '@/lib/http-utils'
 
 interface MigraineLocationType {
   id: string
@@ -29,15 +29,12 @@ export function MigraineLocationTypesForm({ onContinue, onBack }: MigraineLocati
   const fetchLocationTypes = React.useCallback(async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/migraine-location-types')
-      if (!response.ok) {
-        throw new Error('Failed to fetch location types')
+      const { data, error } = await apiFetch<MigraineLocationType[]>('/api/migraine-location-types')
+      if (error || !data) {
+        // Error toast is automatically shown by apiFetch
+        return
       }
-      const data = await response.json()
       setLocationTypes(data)
-    } catch (error) {
-      console.error('Error fetching location types:', error)
-      toast.error('Failed to fetch location types')
     } finally {
       setLoading(false)
     }

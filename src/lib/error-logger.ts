@@ -5,18 +5,29 @@ interface LogApiErrorOptions {
   error: unknown
   context?: Record<string, unknown>
   operation?: string
+  requestId?: string
 }
 
 /**
  * Logs API errors with detailed request context, following the pattern established
  * in the webhook API for consistent error logging across all API routes.
  */
-export async function logApiError({ request, error, context, operation }: LogApiErrorOptions) {
+export async function logApiError({
+  request,
+  error,
+  context,
+  operation,
+  requestId,
+}: LogApiErrorOptions) {
   try {
     console.error('=== API Error ===')
     console.error('Timestamp:', new Date().toISOString())
     console.error('Method:', request.method)
     console.error('URL:', request.url)
+
+    if (requestId) {
+      console.error('Request ID:', requestId)
+    }
 
     if (operation) {
       console.error('Operation:', operation)

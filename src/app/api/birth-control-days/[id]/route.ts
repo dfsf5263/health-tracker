@@ -2,6 +2,8 @@ import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
 
 const updateBirthControlDaySchema = z.object({
   date: z
@@ -13,21 +15,28 @@ const updateBirthControlDaySchema = z.object({
 })
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const requestId = generateRequestId()
+  let userId: string | null = null
+  let user: { id: string } | null = null
+  let id: string | null = null
+
   try {
-    const { userId } = await auth()
+    const authResult = await auth()
+    userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
-    const user = await prisma.user.findUnique({
+    user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
-    const { id } = await params
+    const { id: paramId } = await params
+    id = paramId
     const birthControlDay = await prisma.birthControlDay.findFirst({
       where: {
         id,
@@ -39,17 +48,28 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!birthControlDay) {
-      return NextResponse.json({ error: 'Birth control day not found' }, { status: 404 })
+      return ApiError.notFound('Birth control day', requestId)
     }
 
     return NextResponse.json(birthControlDay)
   } catch (error) {
-    console.error('Error fetching birth control day:', error)
-    return NextResponse.json({ error: 'Failed to fetch birth control day' }, { status: 500 })
+    await logApiError({
+      request,
+      error,
+      context: {
+        userId,
+        userDbId: user?.id,
+        birthControlDayId: id,
+      },
+      operation: 'fetch birth control day',
+      requestId,
+    })
+    return ApiError.internal('fetch birth control day', requestId)
   }
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
@@ -66,7 +86,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -74,7 +94,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     body = await request.json()
@@ -90,7 +110,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!existingBirthControlDay) {
-      return NextResponse.json({ error: 'Birth control day not found' }, { status: 404 })
+      return ApiError.notFound('Birth control day', requestId)
     }
 
     // If typeId is being updated, verify the new type belongs to the user
@@ -103,7 +123,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       })
 
       if (!birthControlType) {
-        return NextResponse.json({ error: 'Birth control type not found' }, { status: 404 })
+        return ApiError.notFound('Birth control type', requestId)
       }
     }
 
@@ -129,41 +149,57 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(updatedBirthControlDay)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Validation error updating birth control day:', {
-        error: error.issues,
+      await logApiError({
+        request,
+        error,
+        context: {
+          requestBody: body,
+          birthControlDayId: id,
+          userId,
+          userDbId: user?.id,
+          existingBirthControlDay,
+        },
+        operation: 'validate birth control day update',
+        requestId,
+      })
+      return ApiError.validation(error, requestId)
+    }
+
+    // Handle unique constraint violation (duplicate date + type for user)
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
+      await logApiError({
+        request,
+        error,
+        context: {
+          requestBody: body,
+          birthControlDayId: id,
+          userId,
+          userDbId: user?.id,
+          existingBirthControlDay,
+        },
+        operation: 'update birth control day (duplicate)',
+        requestId,
+      })
+      return ApiError.conflict(
+        'Birth control day for this date and type already exists. Please choose a different date or type.',
+        requestId
+      )
+    }
+
+    await logApiError({
+      request,
+      error,
+      context: {
         requestBody: body,
         birthControlDayId: id,
         userId,
         userDbId: user?.id,
         existingBirthControlDay,
-        endpoint: 'PUT /api/birth-control-days/[id]',
-      })
-      return NextResponse.json(
-        { error: 'Invalid request data', details: error.issues },
-        { status: 400 }
-      )
-    }
-
-    // Handle unique constraint violation (duplicate date + type for user)
-    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
-      return NextResponse.json(
-        {
-          error: `Birth control day for this date and type already exists. Please choose a different date or type.`,
-        },
-        { status: 409 }
-      )
-    }
-
-    console.error('Error updating birth control day:', {
-      error,
-      requestBody: body,
-      birthControlDayId: id,
-      userId,
-      userDbId: user?.id,
-      existingBirthControlDay,
-      endpoint: 'PUT /api/birth-control-days/[id]',
+      },
+      operation: 'update birth control day',
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to update birth control day' }, { status: 500 })
+    return ApiError.internal('update birth control day', requestId)
   }
 }
 
@@ -171,6 +207,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let id: string | null = null
@@ -186,7 +223,7 @@ export async function DELETE(
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -194,7 +231,7 @@ export async function DELETE(
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     const { id: paramId } = await params
@@ -207,7 +244,7 @@ export async function DELETE(
     })
 
     if (!existingBirthControlDay) {
-      return NextResponse.json({ error: 'Birth control day not found' }, { status: 404 })
+      return ApiError.notFound('Birth control day', requestId)
     }
 
     await prisma.birthControlDay.delete({
@@ -216,14 +253,18 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting birth control day:', {
+    await logApiError({
+      request,
       error,
-      birthControlDayId: id,
-      userId,
-      userDbId: user?.id,
-      existingBirthControlDay,
-      endpoint: 'DELETE /api/birth-control-days/[id]',
+      context: {
+        birthControlDayId: id,
+        userId,
+        userDbId: user?.id,
+        existingBirthControlDay,
+      },
+      operation: 'delete birth control day',
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to delete birth control day' }, { status: 500 })
+    return ApiError.internal('delete birth control day', requestId)
   }
 }

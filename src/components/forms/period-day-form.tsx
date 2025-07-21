@@ -84,10 +84,7 @@ export function PeriodDayForm({
             <Button
               id="date"
               variant="outline"
-              className={cn(
-                'w-full justify-between font-normal',
-                !date && 'text-muted-foreground'
-              )}
+              className={cn('w-full justify-between font-normal', !date && 'text-muted-foreground')}
             >
               {date ? format(date, 'PPP') : 'Select date'}
               <CalendarIcon className="h-4 w-4" />

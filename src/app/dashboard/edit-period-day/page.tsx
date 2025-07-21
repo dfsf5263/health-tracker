@@ -8,6 +8,7 @@ import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carouse
 import { Progress } from '@/components/ui/progress'
 import { PeriodDayForm, PeriodDayFormData } from '@/components/forms/period-day-form'
 import { PeriodDay } from '@prisma/client'
+import { apiFetch, showSuccessToast } from '@/lib/http-utils'
 
 function EditPeriodDayContent() {
   const router = useRouter()
@@ -27,32 +28,33 @@ function EditPeriodDayContent() {
 
     const loadPeriodDay = async () => {
       try {
-        const response = await fetch('/api/period-days')
-        if (response.ok) {
-          const periodDays = await response.json()
-          const periodDay = periodDays.find((pd: PeriodDay) => pd.id === periodDayId)
+        const { data: periodDays, error } = await apiFetch<PeriodDay[]>('/api/period-days')
+        if (error || !periodDays) {
+          // Error toast is automatically shown by apiFetch
+          router.push('/dashboard')
+          return
+        }
 
-          if (periodDay) {
-            // Parse the UTC date correctly to avoid timezone issues
-            const periodDate = new Date(periodDay.date)
-            const localDate = new Date(
-              periodDate.getUTCFullYear(),
-              periodDate.getUTCMonth(),
-              periodDate.getUTCDate()
-            )
+        const periodDay = periodDays.find((pd: PeriodDay) => pd.id === periodDayId)
 
-            setPeriodDayData({
-              date: localDate,
-              flow: periodDay.flow,
-              color: periodDay.color,
-              notes: periodDay.notes || undefined,
-            })
-          } else {
-            toast.error('Period day not found')
-            router.push('/dashboard')
-          }
+        if (periodDay) {
+          // Parse the UTC date correctly to avoid timezone issues
+          const periodDate = new Date(periodDay.date)
+          const localDate = new Date(
+            periodDate.getUTCFullYear(),
+            periodDate.getUTCMonth(),
+            periodDate.getUTCDate()
+          )
+
+          setPeriodDayData({
+            date: localDate,
+            flow: periodDay.flow,
+            color: periodDay.color,
+            notes: periodDay.notes || undefined,
+          })
         } else {
-          throw new Error('Failed to fetch period day')
+          toast.error('Period day not found')
+          router.push('/dashboard')
         }
       } catch (error) {
         console.error('Error loading period day:', error)
@@ -69,32 +71,26 @@ function EditPeriodDayContent() {
   const handleSubmit = async (data: PeriodDayFormData) => {
     if (!periodDayId) return
 
-    try {
-      const response = await fetch(`/api/period-days/${periodDayId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          date: `${data.date.getFullYear()}-${String(data.date.getMonth() + 1).padStart(2, '0')}-${String(data.date.getDate()).padStart(2, '0')}`,
-          flow: data.flow,
-          color: data.color,
-          notes: data.notes,
-        }),
-      })
+    const { data: updatedPeriodDay, error } = await apiFetch(`/api/period-days/${periodDayId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        date: `${data.date.getFullYear()}-${String(data.date.getMonth() + 1).padStart(2, '0')}-${String(data.date.getDate()).padStart(2, '0')}`,
+        flow: data.flow,
+        color: data.color,
+        notes: data.notes,
+      }),
+    })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to update period day')
-      }
-
-      toast.success('Period day updated successfully')
-      router.push('/dashboard')
-    } catch (error) {
-      console.error('Error updating period day:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to update period day')
-      throw error
+    if (error || !updatedPeriodDay) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to update period day')
     }
+
+    showSuccessToast('Period day updated successfully')
+    router.push('/dashboard')
   }
 
   const handleBack = () => {

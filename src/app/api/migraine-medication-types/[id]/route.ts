@@ -2,6 +2,8 @@ import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
 
 const updateMigraineMedicationTypeSchema = z.object({
   name: z
@@ -12,6 +14,7 @@ const updateMigraineMedicationTypeSchema = z.object({
 })
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
@@ -22,7 +25,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -30,7 +33,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     body = await request.json()
@@ -48,7 +51,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!existingType) {
-      return NextResponse.json({ error: 'Migraine medication type not found' }, { status: 404 })
+      return ApiError.notFound('Migraine medication type', requestId)
     }
 
     const updatedType = await prisma.migraineMedicationType.update({
@@ -61,42 +64,44 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(updatedType)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Validation error updating migraine medication type:', {
-        error: error.issues,
-        requestBody: body,
-        typeId: id,
-        userId,
-        userDbId: user?.id,
-        endpoint: `PUT /api/migraine-medication-types/${id}`,
+      await logApiError({
+        request,
+        error,
+        operation: 'updating migraine medication type',
+        context: {
+          requestBody: body,
+          typeId: id,
+          userId,
+          userDbId: user?.id,
+          validationError: error.issues,
+        },
+        requestId,
       })
-      return NextResponse.json(
-        { error: 'Invalid request data', details: error.issues },
-        { status: 400 }
-      )
+      return ApiError.validation(error, requestId)
     }
 
     // Handle unique constraint violation (duplicate name)
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
-      return NextResponse.json(
-        {
-          error: `Migraine medication type "${validatedData?.name}" already exists. Please use a different name.`,
-        },
-        { status: 409 }
+      return ApiError.conflict(
+        `Migraine medication type "${validatedData?.name}" already exists. Please use a different name.`,
+        requestId
       )
     }
 
-    console.error('Error updating migraine medication type:', {
+    await logApiError({
+      request,
       error,
-      requestBody: body,
-      typeId: id,
-      userId,
-      userDbId: user?.id,
-      endpoint: `PUT /api/migraine-medication-types/${id}`,
+      operation: 'updating migraine medication type',
+      context: {
+        requestBody: body,
+        typeId: id,
+        userId,
+        userDbId: user?.id,
+        validatedData,
+      },
+      requestId,
     })
-    return NextResponse.json(
-      { error: 'Failed to update migraine medication type' },
-      { status: 500 }
-    )
+    return ApiError.internal('update migraine medication type', requestId)
   }
 }
 
@@ -104,6 +109,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let id: string | null = null
 
@@ -111,7 +117,7 @@ export async function DELETE(
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     const user = await prisma.user.findUnique({
@@ -119,7 +125,7 @@ export async function DELETE(
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     const { id: paramId } = await params
@@ -134,7 +140,7 @@ export async function DELETE(
     })
 
     if (!existingType) {
-      return NextResponse.json({ error: 'Migraine medication type not found' }, { status: 404 })
+      return ApiError.notFound('Migraine medication type', requestId)
     }
 
     await prisma.migraineMedicationType.delete({
@@ -143,15 +149,16 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Migraine medication type deleted successfully' })
   } catch (error) {
-    console.error('Error deleting migraine medication type:', {
+    await logApiError({
+      request,
       error,
-      typeId: id,
-      userId,
-      endpoint: `DELETE /api/migraine-medication-types/${id}`,
+      operation: 'deleting migraine medication type',
+      context: {
+        typeId: id,
+        userId,
+      },
+      requestId,
     })
-    return NextResponse.json(
-      { error: 'Failed to delete migraine medication type' },
-      { status: 500 }
-    )
+    return ApiError.internal('delete migraine medication type', requestId)
   }
 }

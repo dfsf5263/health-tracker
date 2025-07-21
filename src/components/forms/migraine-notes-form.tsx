@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useMigraineForm } from './migraine-form-provider'
-import { toast } from 'sonner'
+import { apiFetch, showSuccessToast } from '@/lib/http-utils'
 
 interface MigraineNotesFormProps {
   onBack?: () => void
@@ -40,7 +40,7 @@ export function MigraineNotesForm({
 
   const handleSubmit = async () => {
     if (isEditMode && !migraineId) {
-      toast.error('Invalid migraine ID for editing')
+      console.error('Invalid migraine ID for editing')
       return
     }
 
@@ -79,19 +79,19 @@ export function MigraineNotesForm({
 
       // Validate required fields
       if (!migraineData.startDateTime) {
-        toast.error('Start date and time are required')
+        console.error('Start date and time are required')
         return
       }
 
       if (!migraineData.painLevel) {
-        toast.error('Pain level is required')
+        console.error('Pain level is required')
         return
       }
 
       const url = isEditMode ? `/api/migraines/${migraineId}` : '/api/migraines'
       const method = isEditMode ? 'PUT' : 'POST'
 
-      const response = await fetch(url, {
+      const { data: savedMigraine, error } = await apiFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -99,20 +99,16 @@ export function MigraineNotesForm({
         body: JSON.stringify(migraineData),
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || `Failed to ${isEditMode ? 'update' : 'save'} migraine`)
+      if (error || !savedMigraine) {
+        // Error toast is automatically shown by apiFetch
+        throw new Error(error || `Failed to ${isEditMode ? 'update' : 'save'} migraine`)
       }
 
-      toast.success(`Migraine ${isEditMode ? 'updated' : 'saved'} successfully`)
+      showSuccessToast(`Migraine ${isEditMode ? 'updated' : 'saved'} successfully`)
       router.push('/dashboard')
     } catch (error) {
       console.error(`Error ${isEditMode ? 'updating' : 'saving'} migraine:`, error)
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : `Failed to ${isEditMode ? 'update' : 'save'} migraine`
-      )
+      // Error toast is already shown by apiFetch
     } finally {
       setIsSubmitting(false)
     }

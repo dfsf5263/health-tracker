@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button'
 import { CalendarDayButton, Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { toast } from 'sonner'
+import { apiFetch, showSuccessToast } from '@/lib/http-utils'
 import {
   Cycle,
   PeriodDay,
@@ -411,30 +411,29 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
     try {
       // Fetch cycles, period days, birth control days, irregular physical days, normal physical days, and migraines in parallel
       const [
-        cyclesResponse,
-        periodDaysResponse,
-        birthControlDaysResponse,
-        irregularPhysicalDaysResponse,
-        normalPhysicalDaysResponse,
-        migrainesResponse,
+        { data: cyclesData, error: cyclesError },
+        { data: periodDaysData, error: periodDaysError },
+        { data: birthControlDaysData, error: birthControlDaysError },
+        { data: irregularPhysicalDaysData, error: irregularPhysicalDaysError },
+        { data: normalPhysicalDaysData, error: normalPhysicalDaysError },
+        { data: migrainesData, error: migrainesError },
       ] = await Promise.all([
-        fetch('/api/cycles'),
-        fetch('/api/period-days'),
-        fetch('/api/birth-control-days'),
-        fetch('/api/irregular-physical-days'),
-        fetch('/api/normal-physical-days'),
-        fetch('/api/migraines'),
+        apiFetch<Cycle[]>('/api/cycles'),
+        apiFetch<PeriodDay[]>('/api/period-days'),
+        apiFetch<BirthControlDayWithType[]>('/api/birth-control-days'),
+        apiFetch<IrregularPhysicalDayWithType[]>('/api/irregular-physical-days'),
+        apiFetch<NormalPhysicalDayWithType[]>('/api/normal-physical-days'),
+        apiFetch<MigraineWithRelationships[]>('/api/migraines'),
       ])
 
-      if (cyclesResponse.ok) {
-        const cyclesData = await cyclesResponse.json()
+      if (!cyclesError && cyclesData) {
         setCycles(cyclesData)
 
         // Fetch predictions if we have enough cycles
         if (cyclesData.length >= 3) {
-          const predictionsResponse = await fetch('/api/cycles/predictions?count=6')
-          if (predictionsResponse.ok) {
-            const predictionsData = await predictionsResponse.json()
+          const { data: predictionsData, error: predictionsError } =
+            await apiFetch<PredictionResult>('/api/cycles/predictions?count=6')
+          if (!predictionsError && predictionsData) {
             setPredictions(predictionsData)
           }
         } else {
@@ -442,33 +441,28 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
         }
       }
 
-      if (periodDaysResponse.ok) {
-        const periodDaysData = await periodDaysResponse.json()
+      if (!periodDaysError && periodDaysData) {
         setPeriodDays(periodDaysData)
       }
 
-      if (birthControlDaysResponse.ok) {
-        const birthControlDaysData = await birthControlDaysResponse.json()
+      if (!birthControlDaysError && birthControlDaysData) {
         setBirthControlDays(birthControlDaysData)
       }
 
-      if (irregularPhysicalDaysResponse.ok) {
-        const irregularPhysicalDaysData = await irregularPhysicalDaysResponse.json()
+      if (!irregularPhysicalDaysError && irregularPhysicalDaysData) {
         setIrregularPhysicalDays(irregularPhysicalDaysData)
       }
 
-      if (normalPhysicalDaysResponse.ok) {
-        const normalPhysicalDaysData = await normalPhysicalDaysResponse.json()
+      if (!normalPhysicalDaysError && normalPhysicalDaysData) {
         setNormalPhysicalDays(normalPhysicalDaysData)
       }
 
-      if (migrainesResponse.ok) {
-        const migrainesData = await migrainesResponse.json()
+      if (!migrainesError && migrainesData) {
         setMigraines(migrainesData)
       }
     } catch (error) {
       console.error('Error fetching data:', error)
-      toast.error('Failed to load data')
+      // Individual API errors are already shown by apiFetch, this is for unexpected errors
     } finally {
       setIsLoading(false)
       onLoadingChange?.(false)
@@ -664,7 +658,7 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
         router.push(url)
       } else {
         // For future event types, add their specific edit routes here
-        toast.error('Edit functionality for this event type is not implemented yet')
+        console.warn('Edit functionality for this event type is not implemented yet')
       }
     }
 
@@ -691,20 +685,21 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
           endpoint = `/api/migraines/${deletingId}`
         }
 
-        const response = await fetch(endpoint, {
+        const { data: deletedItem, error } = await apiFetch(endpoint, {
           method: 'DELETE',
         })
 
-        if (!response.ok) {
-          throw new Error(`Failed to delete ${config.label.toLowerCase()}`)
+        if (error || !deletedItem) {
+          // Error toast is automatically shown by apiFetch
+          throw new Error(error || `Failed to delete ${config.label.toLowerCase()}`)
         }
 
-        toast.success(`${config.label} deleted successfully`)
+        showSuccessToast(`${config.label} deleted successfully`)
         setDeleteDialogOpen(false)
         fetchData() // Refresh the calendar data
       } catch (error) {
         console.error(`Error deleting ${config.label.toLowerCase()}:`, error)
-        toast.error(`Failed to delete ${config.label.toLowerCase()}`)
+        // Error toast is already shown by apiFetch or our custom error above
       } finally {
         setIsDeleting(false)
         setDeletingId(null)
@@ -972,59 +967,59 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
                   {...props}
                 >
                   {children}
-                  <div className='flex items-center justify-center'>
-                  {!modifiers.outside && periodDay && (
-                    <>
-                      {/* Desktop: Droplet icons */}
-                      <Droplet
-                        className={`hidden sm:block h-3 w-3 ${getDropletColor(periodDay.color)}`}
-                      />
-                      {/* Mobile: Rectangle icons */}
-                      <RectangleVertical
-                        className={`block sm:hidden size-1.5 ${getDropletColor(periodDay.color)}`}
-                      />
-                    </>
-                  )}
-                  {!modifiers.outside && isPredicted && (
-                    <>
-                      {/* Desktop: Droplet icons */}
-                      <Droplet className="hidden sm:block h-3 w-3 text-red-300 opacity-60" />
-                      {/* Mobile: Rectangle icons */}
-                      <RectangleVertical className="block sm:hidden size-1.5 text-red-300 fill-red-300 opacity-60" />
-                    </>
-                  )}
-                  {!modifiers.outside && bcDays.length > 0 && (
-                    <>
-                      {/* Desktop: Pill icon */}
-                      <Pill className="hidden sm:block h-3 w-3 text-blue-500 fill-blue-500" />
-                      {/* Mobile: Rectangle icon */}
-                      <RectangleVertical className="block sm:hidden size-1.5 text-blue-500 fill-blue-500" />
-                    </>
-                  )}
-                  {!modifiers.outside && ipDays.length > 0 && (
-                    <>
-                      {/* Desktop: Activity icon */}
-                      <Activity className="hidden sm:block h-3 w-3 text-orange-500 fill-orange-500" />
-                      {/* Mobile: Rectangle icon */}
-                      <RectangleVertical className="block sm:hidden size-1.5 text-orange-500 fill-orange-500" />
-                    </>
-                  )}
-                  {!modifiers.outside && npDays.length > 0 && (
-                    <>
-                      {/* Desktop: Heart icon */}
-                      <Heart className="hidden sm:block h-3 w-3 text-green-500 fill-green-500" />
-                      {/* Mobile: Rectangle icon */}
-                      <RectangleVertical className="block sm:hidden size-1.5 text-green-500 fill-green-500" />
-                    </>
-                  )}
-                  {!modifiers.outside && migraineDays.length > 0 && (
-                    <>
-                      {/* Desktop: Brain icon */}
-                      <Brain className="hidden sm:block h-3 w-3 text-purple-500 fill-purple-500" />
-                      {/* Mobile: Rectangle icon */}
-                      <RectangleVertical className="block sm:hidden size-1.5 text-purple-500 fill-purple-500" />
-                    </>
-                  )}
+                  <div className="flex items-center justify-center">
+                    {!modifiers.outside && periodDay && (
+                      <>
+                        {/* Desktop: Droplet icons */}
+                        <Droplet
+                          className={`hidden sm:block h-3 w-3 ${getDropletColor(periodDay.color)}`}
+                        />
+                        {/* Mobile: Rectangle icons */}
+                        <RectangleVertical
+                          className={`block sm:hidden size-1.5 ${getDropletColor(periodDay.color)}`}
+                        />
+                      </>
+                    )}
+                    {!modifiers.outside && isPredicted && (
+                      <>
+                        {/* Desktop: Droplet icons */}
+                        <Droplet className="hidden sm:block h-3 w-3 text-red-300 opacity-60" />
+                        {/* Mobile: Rectangle icons */}
+                        <RectangleVertical className="block sm:hidden size-1.5 text-red-300 fill-red-300 opacity-60" />
+                      </>
+                    )}
+                    {!modifiers.outside && bcDays.length > 0 && (
+                      <>
+                        {/* Desktop: Pill icon */}
+                        <Pill className="hidden sm:block h-3 w-3 text-blue-500 fill-blue-500" />
+                        {/* Mobile: Rectangle icon */}
+                        <RectangleVertical className="block sm:hidden size-1.5 text-blue-500 fill-blue-500" />
+                      </>
+                    )}
+                    {!modifiers.outside && ipDays.length > 0 && (
+                      <>
+                        {/* Desktop: Activity icon */}
+                        <Activity className="hidden sm:block h-3 w-3 text-orange-500 fill-orange-500" />
+                        {/* Mobile: Rectangle icon */}
+                        <RectangleVertical className="block sm:hidden size-1.5 text-orange-500 fill-orange-500" />
+                      </>
+                    )}
+                    {!modifiers.outside && npDays.length > 0 && (
+                      <>
+                        {/* Desktop: Heart icon */}
+                        <Heart className="hidden sm:block h-3 w-3 text-green-500 fill-green-500" />
+                        {/* Mobile: Rectangle icon */}
+                        <RectangleVertical className="block sm:hidden size-1.5 text-green-500 fill-green-500" />
+                      </>
+                    )}
+                    {!modifiers.outside && migraineDays.length > 0 && (
+                      <>
+                        {/* Desktop: Brain icon */}
+                        <Brain className="hidden sm:block h-3 w-3 text-purple-500 fill-purple-500" />
+                        {/* Mobile: Rectangle icon */}
+                        <RectangleVertical className="block sm:hidden size-1.5 text-purple-500 fill-purple-500" />
+                      </>
+                    )}
                   </div>
                 </CalendarDayButton>
               )

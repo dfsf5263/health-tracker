@@ -12,6 +12,7 @@ import {
 } from '@/components/forms/irregular-physical-day-form'
 import { IrregularPhysicalTypeForm } from '@/components/irregular-physical-type-form'
 import { IrregularPhysicalDay, IrregularPhysicalType } from '@prisma/client'
+import { apiFetch, showSuccessToast } from '@/lib/http-utils'
 
 interface IrregularPhysicalDayWithType extends IrregularPhysicalDay {
   type: IrregularPhysicalType
@@ -54,27 +55,25 @@ function EditIrregularPhysicalDayContent() {
     const loadIrregularPhysicalDay = async () => {
       try {
         // Fetch both irregular physical day and types in parallel
-        const [dayResponse, typesResponse] = await Promise.all([
-          fetch(`/api/irregular-physical-days/${irregularPhysicalDayId}`),
-          fetch('/api/irregular-physical-types'),
+        const [
+          { data: irregularPhysicalDay, error: dayError },
+          { data: typesData, error: typesError },
+        ] = await Promise.all([
+          apiFetch<IrregularPhysicalDayWithType>(
+            `/api/irregular-physical-days/${irregularPhysicalDayId}`
+          ),
+          apiFetch<IrregularPhysicalTypeResponse[]>('/api/irregular-physical-types'),
         ])
 
-        if (!dayResponse.ok) {
-          if (dayResponse.status === 404) {
-            toast.error('Irregular physical day not found')
-          } else {
-            throw new Error('Failed to fetch irregular physical day')
-          }
+        if (dayError || !irregularPhysicalDay) {
+          // Error toast is automatically shown by apiFetch
           router.push('/dashboard')
           return
         }
 
-        if (typesResponse.ok) {
-          const typesData = await typesResponse.json()
+        if (!typesError && typesData) {
           setIrregularPhysicalTypes(typesData)
         }
-
-        const irregularPhysicalDay: IrregularPhysicalDayWithType = await dayResponse.json()
 
         // Parse the UTC date correctly to avoid timezone issues
         const ipDate = new Date(irregularPhysicalDay.date)
@@ -105,8 +104,9 @@ function EditIrregularPhysicalDayContent() {
   const handleSubmit = async (data: IrregularPhysicalDayFormData) => {
     if (!irregularPhysicalDayId) return
 
-    try {
-      const response = await fetch(`/api/irregular-physical-days/${irregularPhysicalDayId}`, {
+    const { data: updatedDay, error } = await apiFetch(
+      `/api/irregular-physical-days/${irregularPhysicalDayId}`,
+      {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -116,22 +116,16 @@ function EditIrregularPhysicalDayContent() {
           typeId: data.typeId,
           notes: data.notes,
         }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to update irregular physical day')
       }
+    )
 
-      toast.success('Irregular physical day updated successfully')
-      router.push('/dashboard')
-    } catch (error) {
-      console.error('Error updating irregular physical day:', error)
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to update irregular physical day'
-      )
-      throw error
+    if (error || !updatedDay) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to update irregular physical day')
     }
+
+    showSuccessToast('Irregular physical day updated successfully')
+    router.push('/dashboard')
   }
 
   const handleBack = () => {
@@ -151,32 +145,26 @@ function EditIrregularPhysicalDayContent() {
   const handleIrregularPhysicalTypeFormSubmit = async (
     formData: Omit<IrregularPhysicalTypeResponse, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
   ) => {
-    try {
-      const response = await fetch('/api/irregular-physical-types', {
+    const { data: newType, error } = await apiFetch<IrregularPhysicalTypeResponse>(
+      '/api/irregular-physical-types',
+      {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create irregular physical type')
       }
+    )
 
-      const newType = await response.json()
-      setIrregularPhysicalTypes((prev) => [...prev, newType])
-      setIrregularPhysicalFormOpen(false)
-      setSelectedIrregularPhysicalType(undefined)
-      toast.success('Irregular physical type created successfully')
-    } catch (error) {
-      console.error('Error creating irregular physical type:', error)
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to create irregular physical type'
-      )
-      throw error
+    if (error || !newType) {
+      // Error toast is automatically shown by apiFetch
+      throw new Error(error || 'Failed to create irregular physical type')
     }
+
+    setIrregularPhysicalTypes((prev) => [...prev, newType])
+    setIrregularPhysicalFormOpen(false)
+    setSelectedIrregularPhysicalType(undefined)
+    showSuccessToast('Irregular physical type created successfully')
   }
 
   if (isLoading) {

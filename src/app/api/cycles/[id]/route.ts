@@ -1,23 +1,32 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const requestId = generateRequestId()
+  let userId: string | null = null
+  let user: { id: string } | null = null
+  let id: string | null = null
+
   try {
-    const { userId } = await auth()
+    const authResult = await auth()
+    userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
-    const user = await prisma.user.findUnique({
+    user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
-    const { id } = await params
+    const { id: paramId } = await params
+    id = paramId
     const cycle = await prisma.cycle.findFirst({
       where: {
         id,
@@ -26,12 +35,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!cycle) {
-      return NextResponse.json({ error: 'Cycle not found' }, { status: 404 })
+      return ApiError.notFound('Cycle', requestId)
     }
 
     return NextResponse.json(cycle)
   } catch (error) {
-    console.error('Error fetching cycle:', error)
-    return NextResponse.json({ error: 'Failed to fetch cycle' }, { status: 500 })
+    await logApiError({
+      request,
+      error,
+      context: {
+        userId,
+        userDbId: user?.id,
+        cycleId: id,
+      },
+      operation: 'fetch cycle',
+      requestId,
+    })
+    return ApiError.internal('fetch cycle', requestId)
   }
 }

@@ -14,9 +14,42 @@ export interface ApiResponse<T = unknown> {
   details?: unknown
 }
 
+/**
+ * Backend API error response structure (matches src/lib/api-response.ts)
+ */
+export interface ApiErrorResponse {
+  error: string
+  details?: unknown
+  requestId?: string
+  timestamp?: string
+}
+
 export interface FetchOptions extends RequestInit {
   showErrorToast?: boolean
   showRateLimitToast?: boolean
+}
+
+/**
+ * Formats an error toast with HTTP status code and request ID for better debugging
+ */
+function formatErrorToast(status: number, message: string, requestId?: string): void {
+  const title = `Error ${status}: ${message}`
+  const description = requestId ? `Request ID: ${requestId}` : undefined
+
+  toast.error(title, {
+    description,
+    duration: 5000, // Show for 5 seconds to give users time to read request ID
+  })
+}
+
+/**
+ * Shows a success toast with consistent formatting
+ */
+export function showSuccessToast(message: string, description?: string): void {
+  toast.success(message, {
+    description,
+    duration: 3000,
+  })
 }
 
 /**
@@ -33,7 +66,9 @@ export async function apiFetch<T = unknown>(
 
     // Handle rate limiting (429 status)
     if (response.status === 429) {
-      const errorData = await response.json().catch(() => ({}))
+      const errorData: ApiErrorResponse & { retryAfter?: number } = await response
+        .json()
+        .catch(() => ({}))
       const retryAfter = response.headers.get('Retry-After')
       const retryAfterSeconds = retryAfter ? parseInt(retryAfter) : errorData.retryAfter || 60
 
@@ -46,9 +81,7 @@ export async function apiFetch<T = unknown>(
       const fullMessage = errorMessage + retryMessage
 
       if (showRateLimitToast) {
-        toast.error(fullMessage, {
-          duration: Math.min(retryAfterSeconds * 1000, 10000), // Max 10 seconds
-        })
+        formatErrorToast(429, fullMessage, errorData.requestId)
       }
 
       return {
@@ -61,12 +94,14 @@ export async function apiFetch<T = unknown>(
 
     // Handle other HTTP errors
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
+      const errorData: ApiErrorResponse & { message?: string } = await response
+        .json()
+        .catch(() => ({}))
       const errorMessage =
-        errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`
+        errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`
 
       if (showErrorToast) {
-        toast.error(errorMessage)
+        formatErrorToast(response.status, errorMessage, errorData.requestId)
       }
 
       return {
@@ -88,7 +123,7 @@ export async function apiFetch<T = unknown>(
     const errorMessage = error instanceof Error ? error.message : 'Network error occurred'
 
     if (showErrorToast) {
-      toast.error(errorMessage)
+      formatErrorToast(0, errorMessage) // Status 0 for network errors
     }
 
     return {

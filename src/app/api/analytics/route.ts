@@ -1,15 +1,26 @@
 import { auth } from '@clerk/nextjs/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const requestId = generateRequestId()
+  let userId: string | null = null
+  let user: {
+    id: string
+    averageCycleLength: number | null
+    averagePeriodLength: number | null
+  } | null = null
+
   try {
-    const { userId } = await auth()
+    const authResult = await auth()
+    userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
-    const user = await prisma.user.findUnique({
+    user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
       select: {
         id: true,
@@ -19,7 +30,7 @@ export async function GET() {
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     // Get last 6 cycles
@@ -30,7 +41,6 @@ export async function GET() {
     })
 
     // Get all period days for the last 6 cycles
-    const cycleIds = cycles.map(cycle => cycle.id)
     const periodDays = await prisma.periodDay.findMany({
       where: {
         userId: user.id,
@@ -53,19 +63,28 @@ export async function GET() {
         periodLength: user.averagePeriodLength,
       },
       totalCycles,
-      lastSixCycles: cycles.map(cycle => ({
+      lastSixCycles: cycles.map((cycle) => ({
         id: cycle.id,
         startDate: cycle.startDate,
         endDate: cycle.endDate,
         periodDays: periodDays.filter(
-          pd => pd.date >= cycle.startDate && pd.date <= cycle.endDate
+          (pd) => pd.date >= cycle.startDate && pd.date <= cycle.endDate
         ),
       })),
     }
 
     return NextResponse.json(analytics)
   } catch (error) {
-    console.error('Error fetching analytics:', error)
-    return NextResponse.json({ error: 'Failed to fetch analytics' }, { status: 500 })
+    await logApiError({
+      request,
+      error,
+      operation: 'fetching analytics',
+      context: {
+        userId,
+        userDbId: user?.id,
+      },
+      requestId,
+    })
+    return ApiError.internal('fetch analytics', requestId)
   }
 }

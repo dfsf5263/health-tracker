@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { PeriodStatus } from '@prisma/client'
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
 
 const updateMigraineSchema = z.object({
   startDateTime: z.string().datetime().optional(),
@@ -30,22 +32,24 @@ const updateMigraineSchema = z.object({
 })
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const requestId = generateRequestId()
   let userId: string | null = null
+  let user: { id: string } | null = null
   let id: string | null = null
 
   try {
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
-    const user = await prisma.user.findUnique({
+    user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     const { id: paramId } = await params
@@ -101,22 +105,28 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!migraine) {
-      return NextResponse.json({ error: 'Migraine not found' }, { status: 404 })
+      return ApiError.notFound('Migraine', requestId)
     }
 
     return NextResponse.json(migraine)
   } catch (error) {
-    console.error('Error fetching migraine:', {
+    await logApiError({
+      request,
       error,
-      migraineId: id,
-      userId,
-      endpoint: `GET /api/migraines/${id}`,
+      context: {
+        userId,
+        userDbId: user?.id,
+        migraineId: id,
+      },
+      operation: 'fetch migraine',
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to fetch migraine' }, { status: 500 })
+    return ApiError.internal('fetch migraine', requestId)
   }
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let id: string | null = null
@@ -127,7 +137,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -135,7 +145,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     const { id: paramId } = await params
@@ -150,7 +160,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!existingMigraine) {
-      return NextResponse.json({ error: 'Migraine not found' }, { status: 404 })
+      return ApiError.notFound('Migraine', requestId)
     }
 
     body = await request.json()
@@ -164,9 +174,17 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     // Validate that end time is after start time if both provided
     if (startDateTime && endDateTime && endDateTime <= startDateTime) {
-      return NextResponse.json(
-        { error: 'End date/time must be after start date/time' },
-        { status: 400 }
+      return ApiError.validation(
+        {
+          issues: [
+            {
+              code: 'custom',
+              message: 'End date/time must be after start date/time',
+              path: ['endDateTime'],
+            },
+          ],
+        } as z.ZodError,
+        requestId
       )
     }
 
@@ -347,29 +365,34 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(updatedMigraine)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Validation error updating migraine:', {
-        error: error.issues,
+      await logApiError({
+        request,
+        error,
+        context: {
+          requestBody: body,
+          userId,
+          userDbId: user?.id,
+          migraineId: id,
+        },
+        operation: 'validate migraine update',
+        requestId,
+      })
+      return ApiError.validation(error, requestId)
+    }
+
+    await logApiError({
+      request,
+      error,
+      context: {
         requestBody: body,
         userId,
         userDbId: user?.id,
         migraineId: id,
-        endpoint: `PUT /api/migraines/${id}`,
-      })
-      return NextResponse.json(
-        { error: 'Invalid request data', details: error.issues },
-        { status: 400 }
-      )
-    }
-
-    console.error('Error updating migraine:', {
-      error,
-      requestBody: body,
-      userId,
-      userDbId: user?.id,
-      migraineId: id,
-      endpoint: `PUT /api/migraines/${id}`,
+      },
+      operation: 'update migraine',
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to update migraine' }, { status: 500 })
+    return ApiError.internal('update migraine', requestId)
   }
 }
 
@@ -377,22 +400,24 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const requestId = generateRequestId()
   let userId: string | null = null
+  let user: { id: string } | null = null
   let id: string | null = null
 
   try {
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
-    const user = await prisma.user.findUnique({
+    user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     const { id: paramId } = await params
@@ -407,7 +432,7 @@ export async function DELETE(
     })
 
     if (!existingMigraine) {
-      return NextResponse.json({ error: 'Migraine not found' }, { status: 404 })
+      return ApiError.notFound('Migraine', requestId)
     }
 
     await prisma.migraine.delete({
@@ -416,12 +441,17 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Migraine deleted successfully' })
   } catch (error) {
-    console.error('Error deleting migraine:', {
+    await logApiError({
+      request,
       error,
-      migraineId: id,
-      userId,
-      endpoint: `DELETE /api/migraines/${id}`,
+      context: {
+        userId,
+        userDbId: user?.id,
+        migraineId: id,
+      },
+      operation: 'delete migraine',
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to delete migraine' }, { status: 500 })
+    return ApiError.internal('delete migraine', requestId)
   }
 }

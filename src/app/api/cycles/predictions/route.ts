@@ -1,21 +1,29 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { predictCycles, PredictionModel, PredictionResult } from '@/lib/cycle-prediction'
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
 
 export async function GET(request: NextRequest) {
+  const requestId = generateRequestId()
+  let userId: string | null = null
+  let user: { id: string } | null = null
+
   try {
-    const { userId } = await auth()
+    const authResult = await auth()
+    userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
-    const user = await prisma.user.findUnique({
+    user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     // Get query parameters
@@ -25,14 +33,33 @@ export async function GET(request: NextRequest) {
 
     // Validate parameters
     if (count < 1 || count > 12) {
-      return NextResponse.json({ error: 'Count must be between 1 and 12' }, { status: 400 })
+      return ApiError.validation(
+        {
+          issues: [
+            {
+              code: 'custom',
+              message: 'Count must be between 1 and 12',
+              path: ['count'],
+            },
+          ],
+        } as z.ZodError,
+        requestId
+      )
     }
 
     const validModels: PredictionModel[] = ['simple_average', 'weighted_average']
     if (!validModels.includes(model)) {
-      return NextResponse.json(
-        { error: `Invalid model. Must be one of: ${validModels.join(', ')}` },
-        { status: 400 }
+      return ApiError.validation(
+        {
+          issues: [
+            {
+              code: 'custom',
+              message: `Invalid model. Must be one of: ${validModels.join(', ')}`,
+              path: ['model'],
+            },
+          ],
+        } as z.ZodError,
+        requestId
       )
     }
 
@@ -43,7 +70,7 @@ export async function GET(request: NextRequest) {
     })
 
     if (cycles.length === 0) {
-      return NextResponse.json({ error: 'No cycle data available' }, { status: 404 })
+      return ApiError.notFound('Cycle data', requestId)
     }
 
     try {
@@ -52,10 +79,43 @@ export async function GET(request: NextRequest) {
     } catch (predictionError: unknown) {
       const errorMessage =
         predictionError instanceof Error ? predictionError.message : 'Unknown prediction error'
-      return NextResponse.json({ error: errorMessage }, { status: 400 })
+      await logApiError({
+        request,
+        error: predictionError,
+        operation: 'generating cycle predictions',
+        context: {
+          userId,
+          userDbId: user?.id,
+          count,
+          model,
+          cycleCount: cycles.length,
+        },
+        requestId,
+      })
+      return ApiError.validation(
+        {
+          issues: [
+            {
+              code: 'custom',
+              message: errorMessage,
+              path: ['prediction'],
+            },
+          ],
+        } as z.ZodError,
+        requestId
+      )
     }
   } catch (error) {
-    console.error('Error generating predictions:', error)
-    return NextResponse.json({ error: 'Failed to generate predictions' }, { status: 500 })
+    await logApiError({
+      request,
+      error,
+      operation: 'generating cycle predictions',
+      context: {
+        userId,
+        userDbId: user?.id,
+      },
+      requestId,
+    })
+    return ApiError.internal('generate predictions', requestId)
   }
 }

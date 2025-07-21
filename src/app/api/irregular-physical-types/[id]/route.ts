@@ -2,6 +2,8 @@ import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
 
 const updateIrregularPhysicalTypeSchema = z.object({
   name: z
@@ -13,21 +15,28 @@ const updateIrregularPhysicalTypeSchema = z.object({
 })
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const requestId = generateRequestId()
+  let userId: string | null = null
+  let user: { id: string } | null = null
+  let id: string | null = null
+
   try {
-    const { userId } = await auth()
+    const authResult = await auth()
+    userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
-    const user = await prisma.user.findUnique({
+    user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
-    const { id } = await params
+    const { id: paramId } = await params
+    id = paramId
     const irregularPhysicalType = await prisma.irregularPhysicalType.findFirst({
       where: {
         id,
@@ -36,20 +45,32 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!irregularPhysicalType) {
-      return NextResponse.json({ error: 'Irregular physical type not found' }, { status: 404 })
+      return ApiError.notFound('Irregular physical type', requestId)
     }
 
     return NextResponse.json(irregularPhysicalType)
   } catch (error) {
-    console.error('Error fetching irregular physical type:', error)
-    return NextResponse.json({ error: 'Failed to fetch irregular physical type' }, { status: 500 })
+    await logApiError({
+      request,
+      error,
+      operation: 'fetching irregular physical type',
+      context: {
+        irregularPhysicalTypeId: id,
+        userId,
+        userDbId: user?.id,
+      },
+      requestId,
+    })
+    return ApiError.internal('fetch irregular physical type', requestId)
   }
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
+  let validatedData: z.infer<typeof updateIrregularPhysicalTypeSchema> | null = null
   let id: string | null = null
   let existingIrregularPhysicalType: {
     id: string
@@ -61,7 +82,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -69,11 +90,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     body = await request.json()
-    const validatedData = updateIrregularPhysicalTypeSchema.parse(body)
+    validatedData = updateIrregularPhysicalTypeSchema.parse(body)
 
     const { id: paramId } = await params
     id = paramId
@@ -85,7 +106,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!existingIrregularPhysicalType) {
-      return NextResponse.json({ error: 'Irregular physical type not found' }, { status: 404 })
+      return ApiError.notFound('Irregular physical type', requestId)
     }
 
     const updateData: Record<string, unknown> = {}
@@ -101,42 +122,46 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(updatedIrregularPhysicalType)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Validation error updating irregular physical type:', {
-        error: error.issues,
-        requestBody: body,
-        irregularPhysicalTypeId: id,
-        userId,
-        userDbId: user?.id,
-        existingIrregularPhysicalType,
-        endpoint: 'PUT /api/irregular-physical-types/[id]',
+      await logApiError({
+        request,
+        error,
+        operation: 'updating irregular physical type',
+        context: {
+          requestBody: body,
+          irregularPhysicalTypeId: id,
+          userId,
+          userDbId: user?.id,
+          validationError: error.issues,
+          existingIrregularPhysicalType,
+        },
+        requestId,
       })
-      return NextResponse.json(
-        { error: 'Invalid request data', details: error.issues },
-        { status: 400 }
-      )
+      return ApiError.validation(error, requestId)
     }
 
     // Handle unique constraint violation (duplicate name)
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
-      const validatedData = updateIrregularPhysicalTypeSchema.parse(body)
-      return NextResponse.json(
-        {
-          error: `Irregular physical type "${validatedData?.name}" already exists. Please use a different name.`,
-        },
-        { status: 409 }
+      return ApiError.conflict(
+        `Irregular physical type "${validatedData?.name}" already exists. Please use a different name.`,
+        requestId
       )
     }
 
-    console.error('Error updating irregular physical type:', {
+    await logApiError({
+      request,
       error,
-      requestBody: body,
-      irregularPhysicalTypeId: id,
-      userId,
-      userDbId: user?.id,
-      existingIrregularPhysicalType,
-      endpoint: 'PUT /api/irregular-physical-types/[id]',
+      operation: 'updating irregular physical type',
+      context: {
+        requestBody: body,
+        irregularPhysicalTypeId: id,
+        userId,
+        userDbId: user?.id,
+        validatedData,
+        existingIrregularPhysicalType,
+      },
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to update irregular physical type' }, { status: 500 })
+    return ApiError.internal('update irregular physical type', requestId)
   }
 }
 
@@ -144,6 +169,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let id: string | null = null
@@ -157,7 +183,7 @@ export async function DELETE(
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -165,7 +191,7 @@ export async function DELETE(
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     const { id: paramId } = await params
@@ -178,7 +204,7 @@ export async function DELETE(
     })
 
     if (!existingIrregularPhysicalType) {
-      return NextResponse.json({ error: 'Irregular physical type not found' }, { status: 404 })
+      return ApiError.notFound('Irregular physical type', requestId)
     }
 
     // Check if there are any irregular physical days using this type
@@ -187,11 +213,9 @@ export async function DELETE(
     })
 
     if (irregularPhysicalDaysCount > 0) {
-      return NextResponse.json(
-        {
-          error: `Cannot delete irregular physical type "${existingIrregularPhysicalType.name}" because it is being used in ${irregularPhysicalDaysCount} irregular physical day${irregularPhysicalDaysCount === 1 ? '' : 's'}.`,
-        },
-        { status: 409 }
+      return ApiError.conflict(
+        `Cannot delete irregular physical type "${existingIrregularPhysicalType.name}" because it is being used in ${irregularPhysicalDaysCount} irregular physical day${irregularPhysicalDaysCount === 1 ? '' : 's'}.`,
+        requestId
       )
     }
 
@@ -201,14 +225,18 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting irregular physical type:', {
+    await logApiError({
+      request,
       error,
-      irregularPhysicalTypeId: id,
-      userId,
-      userDbId: user?.id,
-      existingIrregularPhysicalType,
-      endpoint: 'DELETE /api/irregular-physical-types/[id]',
+      operation: 'deleting irregular physical type',
+      context: {
+        irregularPhysicalTypeId: id,
+        userId,
+        userDbId: user?.id,
+        existingIrregularPhysicalType,
+      },
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to delete irregular physical type' }, { status: 500 })
+    return ApiError.internal('delete irregular physical type', requestId)
   }
 }

@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { syncCycles } from '@/lib/sync-cycles'
 import { Flow, Color } from '@prisma/client'
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
 
 const createPeriodDaySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
@@ -14,7 +16,8 @@ const createPeriodDaySchema = z.object({
   notes: z.string().optional(),
 })
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
 
@@ -22,7 +25,7 @@ export async function GET() {
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -30,7 +33,7 @@ export async function GET() {
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     const periodDays = await prisma.periodDay.findMany({
@@ -40,17 +43,22 @@ export async function GET() {
 
     return NextResponse.json(periodDays)
   } catch (error) {
-    console.error('Error fetching period days:', {
+    await logApiError({
+      request,
       error,
-      userId,
-      userDbId: user?.id,
-      endpoint: 'GET /api/period-days',
+      context: {
+        userId,
+        userDbId: user?.id,
+      },
+      operation: 'fetch period days',
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to fetch period days' }, { status: 500 })
+    return ApiError.internal('fetch period days', requestId)
   }
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
@@ -60,7 +68,7 @@ export async function POST(request: NextRequest) {
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -68,7 +76,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     body = await request.json()
@@ -94,17 +102,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(periodDay)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Validation error creating period day:', {
-        error: error.issues,
-        requestBody: body,
-        userId,
-        userDbId: user?.id,
-        endpoint: 'POST /api/period-days',
+      await logApiError({
+        request,
+        error,
+        context: {
+          requestBody: body,
+          userId,
+          userDbId: user?.id,
+        },
+        operation: 'validate period day creation',
+        requestId,
       })
-      return NextResponse.json(
-        { error: 'Invalid request data', details: error.issues },
-        { status: 400 }
-      )
+      return ApiError.validation(error, requestId)
     }
 
     // Handle unique constraint violation (duplicate period day)
@@ -122,31 +131,37 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      console.error('Duplicate period day error:', {
+      await logApiError({
+        request,
         error,
-        requestBody: body,
-        userId,
-        userDbId: user?.id,
-        date: validatedData?.date,
-        formattedDate,
-        endpoint: 'POST /api/period-days',
+        context: {
+          requestBody: body,
+          userId,
+          userDbId: user?.id,
+          date: validatedData?.date,
+          formattedDate,
+        },
+        operation: 'create period day (duplicate)',
+        requestId,
       })
 
-      return NextResponse.json(
-        {
-          error: `Period day already exists for ${formattedDate}. Please modify the existing period day.`,
-        },
-        { status: 409 }
+      return ApiError.conflict(
+        `Period day already exists for ${formattedDate}. Please modify the existing period day.`,
+        requestId
       )
     }
 
-    console.error('Error creating period day:', {
+    await logApiError({
+      request,
       error,
-      requestBody: body,
-      userId,
-      userDbId: user?.id,
-      endpoint: 'POST /api/period-days',
+      context: {
+        requestBody: body,
+        userId,
+        userDbId: user?.id,
+      },
+      operation: 'create period day',
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to create period day' }, { status: 500 })
+    return ApiError.internal('create period day', requestId)
   }
 }

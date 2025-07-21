@@ -2,6 +2,8 @@ import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
 
 const updateBirthControlTypeSchema = z.object({
   name: z
@@ -15,21 +17,28 @@ const updateBirthControlTypeSchema = z.object({
 })
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const requestId = generateRequestId()
+  let userId: string | null = null
+  let user: { id: string } | null = null
+  let id: string | null = null
+
   try {
-    const { userId } = await auth()
+    const authResult = await auth()
+    userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
-    const user = await prisma.user.findUnique({
+    user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
-    const { id } = await params
+    const { id: paramId } = await params
+    id = paramId
     const birthControlType = await prisma.birthControlType.findFirst({
       where: {
         id,
@@ -38,17 +47,28 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!birthControlType) {
-      return NextResponse.json({ error: 'Birth control type not found' }, { status: 404 })
+      return ApiError.notFound('Birth control type', requestId)
     }
 
     return NextResponse.json(birthControlType)
   } catch (error) {
-    console.error('Error fetching birth control type:', error)
-    return NextResponse.json({ error: 'Failed to fetch birth control type' }, { status: 500 })
+    await logApiError({
+      request,
+      error,
+      operation: 'fetching birth control type',
+      context: {
+        birthControlTypeId: id,
+        userId,
+        userDbId: user?.id,
+      },
+      requestId,
+    })
+    return ApiError.internal('fetch birth control type', requestId)
   }
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
@@ -63,7 +83,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -71,7 +91,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     body = await request.json()
@@ -87,7 +107,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!existingBirthControlType) {
-      return NextResponse.json({ error: 'Birth control type not found' }, { status: 404 })
+      return ApiError.notFound('Birth control type', requestId)
     }
 
     // Validate vaginal ring insertion uniqueness
@@ -101,11 +121,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       })
 
       if (existingInsertionType) {
-        return NextResponse.json(
-          {
-            error: `Only one birth control type can be designated for vaginal ring insertion. "${existingInsertionType.name}" is already set for insertion.`,
-          },
-          { status: 409 }
+        return ApiError.conflict(
+          `Only one birth control type can be designated for vaginal ring insertion. "${existingInsertionType.name}" is already set for insertion.`,
+          requestId
         )
       }
     }
@@ -121,11 +139,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       })
 
       if (existingRemovalType) {
-        return NextResponse.json(
-          {
-            error: `Only one birth control type can be designated for vaginal ring removal. "${existingRemovalType.name}" is already set for removal.`,
-          },
-          { status: 409 }
+        return ApiError.conflict(
+          `Only one birth control type can be designated for vaginal ring removal. "${existingRemovalType.name}" is already set for removal.`,
+          requestId
         )
       }
     }
@@ -149,42 +165,46 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(updatedBirthControlType)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Validation error updating birth control type:', {
-        error: error.issues,
-        requestBody: body,
-        birthControlTypeId: id,
-        userId,
-        userDbId: user?.id,
-        existingBirthControlType,
-        endpoint: 'PUT /api/birth-control-types/[id]',
+      await logApiError({
+        request,
+        error,
+        operation: 'updating birth control type',
+        context: {
+          requestBody: body,
+          birthControlTypeId: id,
+          userId,
+          userDbId: user?.id,
+          validationError: error.issues,
+          existingBirthControlType,
+        },
+        requestId,
       })
-      return NextResponse.json(
-        { error: 'Invalid request data', details: error.issues },
-        { status: 400 }
-      )
+      return ApiError.validation(error, requestId)
     }
 
     // Handle unique constraint violation (duplicate name)
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
       const validatedData = updateBirthControlTypeSchema.parse(body)
-      return NextResponse.json(
-        {
-          error: `Birth control type "${validatedData?.name}" already exists. Please use a different name.`,
-        },
-        { status: 409 }
+      return ApiError.conflict(
+        `Birth control type "${validatedData?.name}" already exists. Please use a different name.`,
+        requestId
       )
     }
 
-    console.error('Error updating birth control type:', {
+    await logApiError({
+      request,
       error,
-      requestBody: body,
-      birthControlTypeId: id,
-      userId,
-      userDbId: user?.id,
-      existingBirthControlType,
-      endpoint: 'PUT /api/birth-control-types/[id]',
+      operation: 'updating birth control type',
+      context: {
+        requestBody: body,
+        birthControlTypeId: id,
+        userId,
+        userDbId: user?.id,
+        existingBirthControlType,
+      },
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to update birth control type' }, { status: 500 })
+    return ApiError.internal('update birth control type', requestId)
   }
 }
 
@@ -192,6 +212,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let id: string | null = null
@@ -205,7 +226,7 @@ export async function DELETE(
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -213,7 +234,7 @@ export async function DELETE(
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     const { id: paramId } = await params
@@ -226,7 +247,7 @@ export async function DELETE(
     })
 
     if (!existingBirthControlType) {
-      return NextResponse.json({ error: 'Birth control type not found' }, { status: 404 })
+      return ApiError.notFound('Birth control type', requestId)
     }
 
     // Check if there are any birth control days using this type
@@ -235,11 +256,9 @@ export async function DELETE(
     })
 
     if (birthControlDaysCount > 0) {
-      return NextResponse.json(
-        {
-          error: `Cannot delete birth control type "${existingBirthControlType.name}" because it is being used in ${birthControlDaysCount} birth control day${birthControlDaysCount === 1 ? '' : 's'}.`,
-        },
-        { status: 409 }
+      return ApiError.conflict(
+        `Cannot delete birth control type "${existingBirthControlType.name}" because it is being used in ${birthControlDaysCount} birth control day${birthControlDaysCount === 1 ? '' : 's'}.`,
+        requestId
       )
     }
 
@@ -249,14 +268,18 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting birth control type:', {
+    await logApiError({
+      request,
       error,
-      birthControlTypeId: id,
-      userId,
-      userDbId: user?.id,
-      existingBirthControlType,
-      endpoint: 'DELETE /api/birth-control-types/[id]',
+      operation: 'deleting birth control type',
+      context: {
+        birthControlTypeId: id,
+        userId,
+        userDbId: user?.id,
+        existingBirthControlType,
+      },
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to delete birth control type' }, { status: 500 })
+    return ApiError.internal('delete birth control type', requestId)
   }
 }

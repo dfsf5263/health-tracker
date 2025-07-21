@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { syncCycles } from '@/lib/sync-cycles'
 import { Flow, Color } from '@prisma/client'
+import { logApiError } from '@/lib/error-logger'
+import { ApiError, generateRequestId } from '@/lib/api-response'
 
 const updatePeriodDaySchema = z.object({
   date: z
@@ -18,6 +20,7 @@ const updatePeriodDaySchema = z.object({
 })
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
@@ -34,7 +37,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -42,7 +45,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     body = await request.json()
@@ -58,7 +61,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     })
 
     if (!existingPeriodDay) {
-      return NextResponse.json({ error: 'Period day not found' }, { status: 404 })
+      return ApiError.notFound('Period day', requestId)
     }
 
     const updateData: Record<string, unknown> = {}
@@ -93,31 +96,36 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json(updatedPeriodDay)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Validation error updating period day:', {
-        error: error.issues,
+      await logApiError({
+        request,
+        error,
+        context: {
+          requestBody: body,
+          periodDayId: id,
+          userId,
+          userDbId: user?.id,
+          existingPeriodDay,
+        },
+        operation: 'validate period day update',
+        requestId,
+      })
+      return ApiError.validation(error, requestId)
+    }
+
+    await logApiError({
+      request,
+      error,
+      context: {
         requestBody: body,
         periodDayId: id,
         userId,
         userDbId: user?.id,
         existingPeriodDay,
-        endpoint: 'PUT /api/period-days/[id]',
-      })
-      return NextResponse.json(
-        { error: 'Invalid request data', details: error.issues },
-        { status: 400 }
-      )
-    }
-
-    console.error('Error updating period day:', {
-      error,
-      requestBody: body,
-      periodDayId: id,
-      userId,
-      userDbId: user?.id,
-      existingPeriodDay,
-      endpoint: 'PUT /api/period-days/[id]',
+      },
+      operation: 'update period day',
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to update period day' }, { status: 500 })
+    return ApiError.internal('update period day', requestId)
   }
 }
 
@@ -125,6 +133,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let id: string | null = null
@@ -140,7 +149,7 @@ export async function DELETE(
     const authResult = await auth()
     userId = authResult.userId
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return ApiError.unauthorized(requestId)
     }
 
     user = await prisma.user.findUnique({
@@ -148,7 +157,7 @@ export async function DELETE(
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return ApiError.notFound('User', requestId)
     }
 
     const { id: paramId } = await params
@@ -161,7 +170,7 @@ export async function DELETE(
     })
 
     if (!existingPeriodDay) {
-      return NextResponse.json({ error: 'Period day not found' }, { status: 404 })
+      return ApiError.notFound('Period day', requestId)
     }
 
     await prisma.periodDay.delete({
@@ -172,14 +181,18 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting period day:', {
+    await logApiError({
+      request,
       error,
-      periodDayId: id,
-      userId,
-      userDbId: user?.id,
-      existingPeriodDay,
-      endpoint: 'DELETE /api/period-days/[id]',
+      context: {
+        periodDayId: id,
+        userId,
+        userDbId: user?.id,
+        existingPeriodDay,
+      },
+      operation: 'delete period day',
+      requestId,
     })
-    return NextResponse.json({ error: 'Failed to delete period day' }, { status: 500 })
+    return ApiError.internal('delete period day', requestId)
   }
 }
