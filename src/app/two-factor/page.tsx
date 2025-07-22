@@ -18,7 +18,6 @@ export default function TwoFactorPage() {
   const [isBackupMode, setIsBackupMode] = useState(false)
   const [backupCode, setBackupCode] = useState('')
 
-
   const handleVerification = async () => {
     if (verificationCode.length !== 6) return
 
@@ -30,7 +29,6 @@ export default function TwoFactorPage() {
         code: verificationCode,
         trustDevice: true,
       })
-
 
       if (result.error) {
         throw new Error(result.error.message)
@@ -56,7 +54,6 @@ export default function TwoFactorPage() {
       const result = await authClient.twoFactor.verifyBackupCode({
         code: backupCode.trim(),
       })
-
 
       if (result.error) {
         throw new Error(result.error.message)

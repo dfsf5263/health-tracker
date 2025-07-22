@@ -47,10 +47,15 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       birthControlEmailNotifications: userSettings.birthControlEmailNotifications,
-      ringInsertionReminderTime: userSettings.ringInsertionReminderTime
-        ?.toISOString()
-        .slice(11, 16),
-      ringRemovalReminderTime: userSettings.ringRemovalReminderTime?.toISOString().slice(11, 16),
+      ringInsertionReminderTime: userSettings.ringInsertionReminderTime?.toLocaleTimeString(
+        'en-US',
+        { hour12: false, hour: '2-digit', minute: '2-digit' }
+      ),
+      ringRemovalReminderTime: userSettings.ringRemovalReminderTime?.toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
     })
   } catch (error) {
     await logApiError({
@@ -109,10 +114,10 @@ export async function PUT(request: NextRequest) {
       updateData.birthControlEmailNotifications = birthControlEmailNotifications
     }
     if (ringInsertionReminderTime !== undefined) {
-      updateData.ringInsertionReminderTime = new Date(`1970-01-01T${ringInsertionReminderTime}:00Z`)
+      updateData.ringInsertionReminderTime = new Date(`1970-01-01T${ringInsertionReminderTime}:00`)
     }
     if (ringRemovalReminderTime !== undefined) {
-      updateData.ringRemovalReminderTime = new Date(`1970-01-01T${ringRemovalReminderTime}:00Z`)
+      updateData.ringRemovalReminderTime = new Date(`1970-01-01T${ringRemovalReminderTime}:00`)
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -132,8 +137,15 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({
       message: 'Settings updated successfully',
       birthControlEmailNotifications: updatedUser.birthControlEmailNotifications,
-      ringInsertionReminderTime: updatedUser.ringInsertionReminderTime?.toISOString().slice(11, 16),
-      ringRemovalReminderTime: updatedUser.ringRemovalReminderTime?.toISOString().slice(11, 16),
+      ringInsertionReminderTime: updatedUser.ringInsertionReminderTime?.toLocaleTimeString(
+        'en-US',
+        { hour12: false, hour: '2-digit', minute: '2-digit' }
+      ),
+      ringRemovalReminderTime: updatedUser.ringRemovalReminderTime?.toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
     })
   } catch (error) {
     await logApiError({

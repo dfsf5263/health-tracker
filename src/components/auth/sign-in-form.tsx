@@ -27,7 +27,6 @@ export function SignInForm() {
         callbackURL: '/dashboard',
       })
 
-
       if (error) {
         // Check if the error is due to unverified email
         if (error.message?.includes('email') && error.message?.includes('verif')) {

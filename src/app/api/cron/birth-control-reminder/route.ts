@@ -37,10 +37,14 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date()
-    console.log(`[DEBUG] Birth control reminder cron job triggered at: ${now.toISOString()} (UTC) - Request ID: ${requestId}`)
-    
+    console.log(
+      `[DEBUG] Birth control reminder cron job triggered at: ${now.toLocaleString()} (local time) - Request ID: ${requestId}`
+    )
+
     const currentWindow = getCurrentTimeWindow()
-    console.log(`Current time window: ${currentWindow.hour.toString().padStart(2, '0')}:${currentWindow.start.toString().padStart(2, '0')}-${currentWindow.hour.toString().padStart(2, '0')}:${currentWindow.end.toString().padStart(2, '0')} (UTC)`)
+    console.log(
+      `Current time window: ${currentWindow.hour.toString().padStart(2, '0')}:${currentWindow.start.toString().padStart(2, '0')}-${currentWindow.hour.toString().padStart(2, '0')}:${currentWindow.end.toString().padStart(2, '0')} (local time)`
+    )
 
     // Process all eligible users for reminders
     const reminderResults = await processReminderUsers()

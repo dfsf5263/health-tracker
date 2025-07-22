@@ -81,7 +81,6 @@ export function TotpSetupWizard({ open, onOpenChange, onComplete }: TotpSetupWiz
       })
 
       if (result.error) {
-
         const errorMessage =
           result.error.message ||
           result.error.toString() ||
@@ -95,7 +94,6 @@ export function TotpSetupWizard({ open, onOpenChange, onComplete }: TotpSetupWiz
       })
 
       if (backupResult.error) {
-
         const backupErrorMessage =
           backupResult.error.message ||
           backupResult.error.toString() ||

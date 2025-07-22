@@ -26,11 +26,9 @@ const isPartialAuthRoute = (pathname: string) => {
   return partialAuthPaths.includes(pathname)
 }
 
-
 export default async function middleware(req: NextRequest) {
   const response = NextResponse.next()
   const pathname = req.nextUrl.pathname
-
 
   // CORS headers for API routes
   if (req.nextUrl.pathname.startsWith('/api/')) {
@@ -92,12 +90,10 @@ export default async function middleware(req: NextRequest) {
     // Check for Better Auth session cookie (optimistic check)
     const sessionCookie = getSessionCookie(req)
 
-
     // Handle partial auth routes (like 2FA verification)
     if (isPartialAuthRoute(pathname)) {
       // Check for two-factor cookie using Better Auth's default prefix
       const twoFactorCookie = req.cookies.get('better-auth.two_factor')
-
 
       if (!twoFactorCookie && !sessionCookie) {
         // No partial authentication, redirect to sign-in

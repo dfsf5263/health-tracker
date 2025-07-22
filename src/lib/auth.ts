@@ -9,12 +9,9 @@ const prisma = new PrismaClient()
 
 export const auth = betterAuth({
   baseURL: process.env.NEXT_PUBLIC_APP_URL!,
-  basePath: "/api/auth",
+  basePath: '/api/auth',
   secret: process.env.BETTER_AUTH_SECRET!,
-  trustedOrigins: [
-    "https://health.crowland.us",
-    "http://localhost:3000"
-  ],
+  trustedOrigins: ['https://health.crowland.us', 'http://localhost:3000'],
   database: prismaAdapter(prisma, {
     provider: 'postgresql',
   }),
