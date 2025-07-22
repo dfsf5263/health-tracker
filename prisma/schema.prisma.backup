@@ -8,28 +8,21 @@ datasource db {
 }
 
 model User {
-  id                           String                 @id @default(uuid()) @db.Uuid
-  email                        String                 @unique
-  name                         String?                
-  image                        String?                
-  emailVerified                Boolean                @default(false) @map("email_verified")
-  firstName                    String?                @map("first_name")
-  lastName                     String?                @map("last_name")
-  passwordHash                 String?                @map("password_hash")
-  twoFactorEnabled             Boolean?               @map("two_factor_enabled")
-  birthControlEmailNotifications Boolean             @default(false) @map("birth_control_email_notifications")
-  daysWithoutBirthControlRing  Int?                   @map("days_without_birth_control_ring")
-  daysWithBirthControlRing     Int?                   @map("days_with_birth_control_ring")
-  ringInsertionReminderTime    DateTime?              @map("ring_insertion_reminder_time") @db.Time
-  ringRemovalReminderTime      DateTime?              @map("ring_removal_reminder_time") @db.Time
-  averageCycleLength           Float?                 @map("average_cycle_length")
-  averagePeriodLength          Float?                 @map("average_period_length")
-  createdAt                    DateTime               @default(now()) @map("created_at")
-  updatedAt                    DateTime               @updatedAt @map("updated_at")
+  id                    String                 @id @default(uuid()) @db.Uuid
+  email                 String                 @unique
+  name                  String?                
+  image                 String?                
+  emailVerified         Boolean                @default(false) @map("email_verified")
+  firstName             String?                @map("first_name")
+  lastName              String?                @map("last_name")
+  passwordHash          String?                @map("password_hash")
+  averageCycleLength    Float?                 @map("average_cycle_length")
+  averagePeriodLength   Float?                 @map("average_period_length")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
 
   sessions              Session[]
   accounts              Account[]
-  twofactors            TwoFactor[]
   cycles                Cycle[]
   periodDays            PeriodDay[]
   birthControlTypes     BirthControlType[]
@@ -75,8 +68,6 @@ model Account {
   refreshToken           String?   @map("refresh_token")
   idToken                String?   @map("id_token")
   accessTokenExpiresAt   DateTime? @map("access_token_expires_at")
-  refreshTokenExpiresAt  DateTime?
-  scope                  String?
   password               String?
   createdAt              DateTime  @default(now()) @map("created_at")
   updatedAt              DateTime  @updatedAt @map("updated_at")
@@ -88,26 +79,6 @@ model Account {
   @@map("account")
 }
 
-model Verification {
-  id         String    @id @default(uuid()) @db.Uuid
-  identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime? @default(now()) @map("created_at")
-  updatedAt  DateTime? @updatedAt @map("updated_at")
-
-  @@map("verification")
-}
-
-model TwoFactor {
-  id          String @id @default(uuid()) @db.Uuid
-  secret      String
-  backupCodes String
-  userId      String @unique @map("user_id") @db.Uuid
-  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("twoFactor")
-}
 
 model Cycle {
   id                    String                 @id @default(uuid()) @db.Uuid

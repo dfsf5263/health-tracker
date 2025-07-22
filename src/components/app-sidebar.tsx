@@ -3,16 +3,19 @@
 import * as React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Calendar, User, Settings, BarChart3 } from 'lucide-react'
+import { Calendar, User, Settings, BarChart3, ChevronRight, Shield, UserCog } from 'lucide-react'
 
 import { NavMain } from '@/components/nav-main'
-import { NavGroup } from '@/components/nav-group'
 import { NavUser } from '@/components/nav-user'
 import { NavUserErrorBoundary } from '@/components/nav-user-error-boundary'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -43,6 +46,16 @@ const data = {
       url: '/dashboard/settings/profile',
       icon: User,
     },
+    {
+      name: 'Account',
+      url: '/dashboard/settings/account',
+      icon: UserCog,
+    },
+    {
+      name: 'Security',
+      url: '/dashboard/settings/security',
+      icon: Shield,
+    },
   ],
 }
 
@@ -69,7 +82,40 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavGroup title="Settings" items={data.settings} />
+
+        {/* Collapsible Settings Section */}
+        <Collapsible defaultOpen className="group/collapsible">
+          <SidebarGroup>
+            <SidebarGroupLabel
+              asChild
+              className="group/label text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-sm"
+            >
+              <CollapsibleTrigger>
+                Settings{' '}
+                <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {data.settings.map((item) => {
+                    const Icon = item.icon
+                    return (
+                      <SidebarMenuItem key={item.name}>
+                        <SidebarMenuButton asChild>
+                          <Link href={item.url}>
+                            <Icon className="!size-4" />
+                            <span>{item.name}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
       </SidebarContent>
       <SidebarFooter>
         <NavUserErrorBoundary>

@@ -1,18 +1,18 @@
 'use client'
 
-import { ProfileForm } from '@/components/settings/profile-form'
+import { AccountForm } from '@/components/settings/account-form'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
-export default function ProfilePage() {
+export default function AccountPage() {
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Profile Settings</CardTitle>
-          <CardDescription>Update your personal information and preferences</CardDescription>
+          <CardTitle>Account Settings</CardTitle>
+          <CardDescription>Manage your account preferences and data</CardDescription>
         </CardHeader>
         <CardContent>
-          <ProfileForm />
+          <AccountForm />
         </CardContent>
       </Card>
     </div>

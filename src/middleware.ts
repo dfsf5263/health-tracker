@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getSessionCookie } from 'better-auth/cookies'
 import { standardApiSizeLimit } from '@/lib/middleware/request-size'
-import { apiRateLimit, authRateLimit, strictRateLimit } from '@/lib/rate-limit'
+import { apiRateLimit, authRateLimit, strictRateLimit, twoFactorRateLimit } from '@/lib/rate-limit'
 
 // Define public routes that don't require authentication
 const isPublicRoute = (pathname: string) => {
@@ -21,9 +21,20 @@ const isPublicRoute = (pathname: string) => {
   return publicPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))
 }
 
+// Define routes that require partial authentication (signed in but may need 2FA)
+const isPartialAuthRoute = (pathname: string) => {
+  const partialAuthPaths = ['/two-factor']
+  return partialAuthPaths.includes(pathname)
+}
+
 // Define authentication routes (user login attempts)
 const isAuthRoute = (pathname: string) => {
   return pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up')
+}
+
+// Define 2FA verification routes that need special rate limiting
+const is2FARoute = (pathname: string) => {
+  return pathname === '/two-factor' || pathname.startsWith('/api/auth/two-factor/verify')
 }
 
 // Define routes that should have no rate limiting
@@ -42,13 +53,18 @@ export default async function middleware(req: NextRequest) {
   const response = NextResponse.next()
   const pathname = req.nextUrl.pathname
 
-  // Apply rate limiting for API routes and auth routes
-  if (pathname.startsWith('/api/') || isAuthRoute(pathname)) {
+  // Apply rate limiting for API routes, auth routes, and 2FA routes
+  if (pathname.startsWith('/api/') || isAuthRoute(pathname) || is2FARoute(pathname)) {
     // Skip rate limiting for unlimited routes
     if (!isUnlimitedRoute(pathname)) {
       // Apply auth rate limiting for login/signup attempts
       if (isAuthRoute(pathname)) {
         const rateLimitResult = await authRateLimit(req)
+        if (rateLimitResult) return rateLimitResult
+      }
+      // Apply stricter rate limiting for 2FA verification
+      else if (is2FARoute(pathname)) {
+        const rateLimitResult = await twoFactorRateLimit(req)
         if (rateLimitResult) return rateLimitResult
       }
       // Apply strict rate limiting for sensitive data operations
@@ -123,6 +139,22 @@ export default async function middleware(req: NextRequest) {
   if (!isPublicRoute(pathname)) {
     // Check for Better Auth session cookie (optimistic check)
     const sessionCookie = getSessionCookie(req)
+
+
+    // Handle partial auth routes (like 2FA verification)
+    if (isPartialAuthRoute(pathname)) {
+      // Check for two-factor cookie using Better Auth's default prefix
+      const twoFactorCookie = req.cookies.get('better-auth.two_factor')
+
+
+      if (!twoFactorCookie && !sessionCookie) {
+        // No partial authentication, redirect to sign-in
+        return NextResponse.redirect(new URL('/sign-in', req.url))
+      }
+
+      // Allow access to 2FA route with partial auth
+      return response
+    }
 
     if (!sessionCookie) {
       // Redirect to sign-in for protected routes

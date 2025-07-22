@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logApiError } from '@/lib/error-logger'
 import { ApiError, generateRequestId } from '@/lib/api-response'
-
-// Placeholder for birth control reminder cron job endpoint
-// This will be implemented in the future when reminder functionality is added
+import { processReminderUsers, getCurrentTimeWindow } from '@/lib/birth-control-reminders'
+import { sendBirthControlReminder } from '@/lib/email-service'
 
 export async function POST(request: NextRequest) {
   const requestId = generateRequestId()
@@ -37,27 +36,68 @@ export async function POST(request: NextRequest) {
       return ApiError.unauthorized(requestId)
     }
 
+    const currentWindow = getCurrentTimeWindow()
     console.log(`Birth control reminder cron job triggered - Request ID: ${requestId}`)
+    console.log(`Current time window: ${currentWindow.start}-${currentWindow.end} minutes`)
 
-    // TODO: Implement birth control reminder logic
-    // This could include:
-    // 1. Finding users who need birth control reminders
-    // 2. Checking their reminder preferences and schedules
-    // 3. Sending email/push notifications for upcoming doses
-    // 4. Tracking reminder success/failure rates
+    // Process all eligible users for reminders
+    const reminderResults = await processReminderUsers()
 
-    // Placeholder response
-    const results = {
-      total: 0,
-      successful: 0,
-      failed: 0,
+    // Send emails for qualified users
+    const details: Array<{ email: string; success: boolean; error?: string }> = []
+    let successful = 0
+    let failed = 0
+
+    for (const result of reminderResults) {
+      if (result.qualified && result.reminderType) {
+        try {
+          const emailResult = await sendBirthControlReminder({
+            to: result.email,
+            firstName: result.firstName,
+            reminderType: result.reminderType,
+          })
+
+          if (emailResult.success) {
+            successful++
+            details.push({
+              email: result.email,
+              success: true,
+            })
+            console.log(`✓ Sent ${result.reminderType} reminder to ${result.email}`)
+          } else {
+            failed++
+            details.push({
+              email: result.email,
+              success: false,
+              error: emailResult.error || 'Email sending failed',
+            })
+            console.log(
+              `✗ Failed to send ${result.reminderType} reminder to ${result.email}: ${emailResult.error}`
+            )
+          }
+        } catch (error) {
+          failed++
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          details.push({
+            email: result.email,
+            success: false,
+            error: errorMessage,
+          })
+          console.error(`✗ Error sending reminder to ${result.email}:`, error)
+        }
+      } else {
+        // User was processed but didn't qualify - just log for debugging
+        console.log(`- Skipped ${result.email}: ${result.reason}`)
+      }
     }
 
-    const details: Array<{ email: string; success: boolean; error?: string }> = []
+    const results = {
+      total: reminderResults.length,
+      successful,
+      failed,
+    }
 
-    console.log(
-      `Birth control reminder cron job completed (placeholder) - Request ID: ${requestId}`
-    )
+    console.log(`Birth control reminder cron job completed - Request ID: ${requestId}`)
     console.log(`- Total users checked: ${results.total}`)
     console.log(`- Reminders sent: ${results.successful}`)
     console.log(`- Failed: ${results.failed}`)
@@ -66,7 +106,7 @@ export async function POST(request: NextRequest) {
       success: true,
       results,
       details,
-      message: 'Birth control reminder cron job completed (placeholder implementation)',
+      message: 'Birth control reminder cron job completed',
     })
   } catch (error) {
     await logApiError({

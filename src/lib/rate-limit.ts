@@ -133,7 +133,7 @@ export const apiRateLimit = createRateLimit({
 
 export const authRateLimit = createRateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 15, // 15 auth attempts per 15 minutes
+  maxRequests: 60, // 60 auth attempts per 15 minutes
   message: 'Too many authentication attempts, please try again later.',
 })
 
@@ -141,4 +141,10 @@ export const strictRateLimit = createRateLimit({
   windowMs: 60 * 1000, // 1 minute
   maxRequests: 60, // 60 requests per minute
   message: 'Rate limit exceeded, please slow down.',
+})
+
+export const twoFactorRateLimit = createRateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  maxRequests: 30, // 30 2FA verification attempts per 10 minutes
+  message: 'Too many two-factor authentication attempts, please try again later.',
 })

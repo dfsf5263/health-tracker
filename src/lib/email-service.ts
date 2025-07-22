@@ -9,6 +9,65 @@ export interface EmailVerificationOptions {
   verificationUrl: string
 }
 
+export interface BirthControlReminderOptions {
+  to: string
+  firstName: string
+  reminderType: 'insertion' | 'removal'
+}
+
+/**
+ * Send birth control reminder email using Resend
+ */
+export async function sendBirthControlReminder({
+  to,
+  firstName,
+  reminderType,
+}: BirthControlReminderOptions): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY environment variable is not configured')
+    }
+
+    if (!process.env.EMAIL_FROM_ADDRESS) {
+      throw new Error('EMAIL_FROM_ADDRESS environment variable is not configured')
+    }
+
+    const fromAddress = process.env.EMAIL_FROM_ADDRESS
+    const replyToAddress = process.env.EMAIL_REPLY_TO || process.env.EMAIL_FROM_ADDRESS
+
+    const subject =
+      reminderType === 'insertion'
+        ? 'Time to insert your birth control ring - Health Tracker'
+        : 'Time to remove your birth control ring - Health Tracker'
+
+    const { data, error } = await resend.emails.send({
+      from: fromAddress,
+      to: [to],
+      replyTo: replyToAddress,
+      subject,
+      html: getBirthControlReminderHtml({ firstName, reminderType }),
+      text: getBirthControlReminderText({ firstName, reminderType }),
+    })
+
+    if (error) {
+      console.error('Failed to send birth control reminder:', error)
+      return {
+        success: false,
+        error: error.message || 'Failed to send email',
+      }
+    }
+
+    console.log('Birth control reminder sent successfully:', data?.id)
+    return { success: true }
+  } catch (error) {
+    console.error('Error sending birth control reminder:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    }
+  }
+}
+
 /**
  * Send email verification email using Resend
  */
@@ -206,5 +265,202 @@ The Health Tracker Team
 ---
 This email was sent because you created an account on Health Tracker.
 If you believe this was sent in error, please ignore this email.
+  `.trim()
+}
+
+/**
+ * Generate HTML version of birth control reminder email
+ */
+function getBirthControlReminderHtml({
+  firstName,
+  reminderType,
+}: {
+  firstName: string
+  reminderType: 'insertion' | 'removal'
+}): string {
+  const isInsertion = reminderType === 'insertion'
+  const actionTitle = isInsertion ? 'Insert' : 'Remove'
+  const actionMessage = isInsertion
+    ? "It's time to insert your birth control ring."
+    : "It's time to remove your birth control ring."
+
+  const instructions = isInsertion
+    ? [
+        'Wash your hands thoroughly',
+        'Remove the ring from its pouch',
+        'Squeeze the ring between your thumb and index finger',
+        'Gently insert the ring into your vagina',
+        'Push it up until it feels comfortable',
+      ]
+    : [
+        'Wash your hands thoroughly',
+        'Hook your index finger under the ring',
+        'Gently pull it out',
+        'Wrap it in tissue and dispose of it properly',
+        'Mark it in your Health Tracker app',
+      ]
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${actionTitle} Your Birth Control Ring</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      padding: 20px 0;
+      border-bottom: 1px solid #e5e5e5;
+      margin-bottom: 30px;
+    }
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      color: #0f172a;
+    }
+    .content {
+      margin: 30px 0;
+    }
+    .reminder-card {
+      background-color: #f0f9ff;
+      border-left: 4px solid #0ea5e9;
+      padding: 16px;
+      margin: 20px 0;
+      border-radius: 6px;
+    }
+    .reminder-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #0c4a6e;
+      margin-bottom: 8px;
+    }
+    .instructions {
+      margin: 20px 0;
+    }
+    .instructions ol {
+      padding-left: 20px;
+    }
+    .instructions li {
+      margin-bottom: 8px;
+    }
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e5e5;
+      font-size: 14px;
+      color: #666;
+      text-align: center;
+    }
+    .note {
+      background-color: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 12px;
+      margin: 20px 0;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">Health Tracker</div>
+  </div>
+  
+  <div class="content">
+    <h1>Birth Control Reminder</h1>
+    
+    <div class="reminder-card">
+      <div class="reminder-title">${actionTitle} Your Ring</div>
+      <p>Hi ${firstName}! ${actionMessage}</p>
+    </div>
+    
+    <div class="instructions">
+      <h3>Quick Instructions:</h3>
+      <ol>
+        ${instructions.map((step) => `<li>${step}</li>`).join('')}
+      </ol>
+    </div>
+    
+    <div class="note">
+      <strong>Remember:</strong> Log this event in your Health Tracker app to keep your cycle predictions accurate and maintain your reminder schedule.
+    </div>
+    
+    <p>If you have any questions about your birth control ring or experience any issues, please consult with your healthcare provider.</p>
+    
+    <p>Stay healthy!</p>
+    <p><strong>The Health Tracker Team</strong></p>
+  </div>
+  
+  <div class="footer">
+    <p>This reminder was sent because you have birth control notifications enabled in Health Tracker.</p>
+    <p>You can manage your notification preferences in your account settings.</p>
+  </div>
+</body>
+</html>
+  `.trim()
+}
+
+/**
+ * Generate text version of birth control reminder email
+ */
+function getBirthControlReminderText({
+  firstName,
+  reminderType,
+}: {
+  firstName: string
+  reminderType: 'insertion' | 'removal'
+}): string {
+  const isInsertion = reminderType === 'insertion'
+  const actionTitle = isInsertion ? 'Insert' : 'Remove'
+  const actionMessage = isInsertion
+    ? "It's time to insert your birth control ring."
+    : "It's time to remove your birth control ring."
+
+  const instructions = isInsertion
+    ? [
+        'Wash your hands thoroughly',
+        'Remove the ring from its pouch',
+        'Squeeze the ring between your thumb and index finger',
+        'Gently insert the ring into your vagina',
+        'Push it up until it feels comfortable',
+      ]
+    : [
+        'Wash your hands thoroughly',
+        'Hook your index finger under the ring',
+        'Gently pull it out',
+        'Wrap it in tissue and dispose of it properly',
+        'Mark it in your Health Tracker app',
+      ]
+
+  return `
+Health Tracker - Birth Control Reminder
+
+${actionTitle} Your Ring
+
+Hi ${firstName}! ${actionMessage}
+
+Quick Instructions:
+${instructions.map((step, index) => `${index + 1}. ${step}`).join('\n')}
+
+REMEMBER: Log this event in your Health Tracker app to keep your cycle predictions accurate and maintain your reminder schedule.
+
+If you have any questions about your birth control ring or experience any issues, please consult with your healthcare provider.
+
+Stay healthy!
+
+The Health Tracker Team
+
+---
+This reminder was sent because you have birth control notifications enabled in Health Tracker.
+You can manage your notification preferences in your account settings.
   `.trim()
 }

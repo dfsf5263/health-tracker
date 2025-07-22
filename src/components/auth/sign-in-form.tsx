@@ -27,6 +27,7 @@ export function SignInForm() {
         callbackURL: '/dashboard',
       })
 
+
       if (error) {
         // Check if the error is due to unverified email
         if (error.message?.includes('email') && error.message?.includes('verif')) {
@@ -40,6 +41,15 @@ export function SignInForm() {
       }
 
       if (data) {
+        // Check if two-factor authentication is required
+        if ('twoFactorRedirect' in data && data.twoFactorRedirect) {
+          toast.info('Two-factor authentication required', {
+            description: 'Redirecting to verification page...',
+          })
+          // Removed manual redirect - let auth client plugin handle it
+          return
+        }
+
         toast.success('Welcome back!')
         router.push('/dashboard')
       }
@@ -64,7 +74,7 @@ export function SignInForm() {
             <Input
               id="email"
               type="email"
-              placeholder="m@example.com"
+              placeholder="user@example.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}

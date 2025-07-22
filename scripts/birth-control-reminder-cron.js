@@ -2,9 +2,9 @@ const cron = require('node-cron')
 
 // Schedule configurable via CRON_SCHEDULE environment variable
 // Cron format: second minute hour day-of-month month day-of-week
-// Default: '0 0 9 * * *' means: at 9:00 AM every day
-// Current setting: '*/5 * * * *' means: every 5 minutes (for testing)
-const schedule = process.env.CRON_SCHEDULE || '0 0 9 * * *'
+// Default: '30 0,15,30,45 * * * *' means: 30 seconds after each 15-minute window (00:30, 15:30, 30:30, 45:30)
+// This ensures we run once per 15-minute window with a 30-second buffer
+const schedule = process.env.CRON_SCHEDULE || '30 0,15,30,45 * * * *'
 
 console.log('Starting birth control reminder cron job...')
 console.log(`Scheduled to run: ${schedule}`)

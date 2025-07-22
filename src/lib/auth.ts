@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
+import { twoFactor } from 'better-auth/plugins'
 import { PrismaClient } from '@prisma/client'
 import { prepopulateUserTypes } from '@/lib/prepopulate-user-types'
 import { sendEmailVerification } from '@/lib/email-service'
@@ -10,6 +11,11 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: 'postgresql',
   }),
+  plugins: [
+    twoFactor({
+      issuer: 'Health Tracker',
+    }),
+  ],
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,

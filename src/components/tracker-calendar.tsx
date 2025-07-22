@@ -34,6 +34,7 @@ import {
   Migraine,
 } from '@prisma/client'
 import { PredictionResult } from '@/lib/cycle-prediction'
+import { RingPredictionResult } from '@/lib/ring-prediction'
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog'
 import { MigraineWithRelationships } from '@/lib/types'
 
@@ -403,6 +404,7 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
   )
   const [migraines, setMigraines] = React.useState<Migraine[]>([])
   const [predictions, setPredictions] = React.useState<PredictionResult | null>(null)
+  const [ringPredictions, setRingPredictions] = React.useState<RingPredictionResult | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
 
   const fetchData = React.useCallback(async () => {
@@ -447,6 +449,15 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
 
       if (!birthControlDaysError && birthControlDaysData) {
         setBirthControlDays(birthControlDaysData)
+
+        // Fetch ring predictions if we have birth control data
+        const { data: ringPredictionsData, error: ringPredictionsError } =
+          await apiFetch<RingPredictionResult>('/api/birth-control/ring-predictions')
+        if (!ringPredictionsError && ringPredictionsData) {
+          setRingPredictions(ringPredictionsData)
+        } else {
+          setRingPredictions(null)
+        }
       }
 
       if (!irregularPhysicalDaysError && irregularPhysicalDaysData) {
@@ -621,6 +632,23 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
 
       return dayNum >= startNum && dayNum <= endNum
     })
+  }
+
+  const isPredictedRingDay = (day: Date) => {
+    if (!ringPredictions?.prediction) return false
+
+    const predictedDate = new Date(ringPredictions.prediction.predictedDate)
+
+    // Use day-level comparison for predicted ring dates
+    const dayYear = day.getFullYear()
+    const dayMonth = day.getMonth()
+    const dayDate = day.getDate()
+
+    const predictedYear = predictedDate.getFullYear()
+    const predictedMonth = predictedDate.getMonth()
+    const predictedDay = predictedDate.getDate()
+
+    return dayYear === predictedYear && dayMonth === predictedMonth && dayDate === predictedDay
   }
 
   const handleAddEvent = () => {
@@ -958,12 +986,13 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
               const npDays = getNormalPhysicalDays(day.date)
               const migraineDays = getMigraines(day.date)
               const isPredicted = !periodDay && isPredictedPeriodDay(day.date)
+              const isPredictedRing = isPredictedRingDay(day.date)
 
               return (
                 <CalendarDayButton
                   day={day}
                   modifiers={modifiers}
-                  className={isPredicted ? 'ring-1 ring-red-200 ring-dashed' : ''}
+                  className={`${isPredicted ? 'ring-1 ring-red-200 ring-dashed' : ''} ${isPredictedRing ? 'ring-1 ring-blue-200 ring-dashed' : ''}`}
                   {...props}
                 >
                   {children}
@@ -986,6 +1015,14 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
                         <Droplet className="hidden sm:block h-3 w-3 text-red-300 opacity-60" />
                         {/* Mobile: Rectangle icons */}
                         <RectangleVertical className="block sm:hidden size-1.5 text-red-300 fill-red-300 opacity-60" />
+                      </>
+                    )}
+                    {!modifiers.outside && isPredictedRing && (
+                      <>
+                        {/* Desktop: Pill icon for predicted ring events */}
+                        <Pill className="hidden sm:block h-3 w-3 text-blue-300 opacity-60" />
+                        {/* Mobile: Rectangle icon for predicted ring events */}
+                        <RectangleVertical className="block sm:hidden size-1.5 text-blue-300 fill-blue-300 opacity-60" />
                       </>
                     )}
                     {!modifiers.outside && bcDays.length > 0 && (
@@ -1072,12 +1109,32 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
                     </span>
                   </div>
                 )}
+                {ringPredictions?.prediction && (
+                  <div className="flex items-center gap-1 text-xs">
+                    <Pill className="h-3 w-3 text-blue-300 opacity-60" />
+                    <span className="text-muted-foreground">
+                      Predicted ring {ringPredictions.prediction.eventType} shown on calendar
+                    </span>
+                  </div>
+                )}
                 {cycles.length < 3 && (
                   <div className="text-xs text-muted-foreground p-2 bg-muted rounded-md">
                     Add {3 - cycles.length} more cycle{3 - cycles.length !== 1 ? 's' : ''} to see
                     predictions
                   </div>
                 )}
+                {ringPredictions && ringPredictions.basedOnEvents === 0 && (
+                  <div className="text-xs text-muted-foreground p-2 bg-muted rounded-md">
+                    Add birth control ring events to see ring predictions
+                  </div>
+                )}
+                {ringPredictions &&
+                  ringPredictions.basedOnEvents > 0 &&
+                  !ringPredictions.prediction && (
+                    <div className="text-xs text-muted-foreground p-2 bg-muted rounded-md">
+                      Configure ring schedule in settings to see ring predictions
+                    </div>
+                  )}
                 {periodDays.length === 0 && (
                   <div className="text-xs text-muted-foreground p-2 bg-muted rounded-md">
                     No events tracked yet. Click the + button to add your first event.
