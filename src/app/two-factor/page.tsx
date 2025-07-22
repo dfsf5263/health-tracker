@@ -38,7 +38,7 @@ export default function TwoFactorPage() {
 
       // Successfully verified, redirect to dashboard
       router.push('/dashboard')
-    } catch (error) {
+    } catch {
       setError('Invalid verification code. Please try again.')
       setVerificationCode('')
     } finally {
@@ -64,7 +64,7 @@ export default function TwoFactorPage() {
 
       // Successfully verified, redirect to dashboard
       router.push('/dashboard')
-    } catch (error) {
+    } catch {
       setError('Invalid backup code. Please try again.')
       setBackupCode('')
     } finally {

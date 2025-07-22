@@ -37,11 +37,7 @@ RUN echo "=== Prisma Generate Debug Info ===" && \
     echo "Running Prisma generate..." && \
     npx prisma generate
 
-# Build arguments for public Clerk key only (safe to embed)
-ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-
-# Set environment variables for build
-ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+# No build arguments needed for Better Auth (all config at runtime)
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
@@ -66,7 +62,7 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Install curl for health checks and node-cron for the weekly summary cron script
+# Install curl for health checks and node-cron for the birth control reminder cron script
 RUN apk add --no-cache curl && npm install node-cron
 
 COPY --from=builder /app/public ./public

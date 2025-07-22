@@ -54,31 +54,31 @@ export default async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname
 
   // Apply rate limiting for API routes, auth routes, and 2FA routes
-  if (pathname.startsWith('/api/') || isAuthRoute(pathname) || is2FARoute(pathname)) {
-    // Skip rate limiting for unlimited routes
-    if (!isUnlimitedRoute(pathname)) {
-      // Apply auth rate limiting for login/signup attempts
-      if (isAuthRoute(pathname)) {
-        const rateLimitResult = await authRateLimit(req)
-        if (rateLimitResult) return rateLimitResult
-      }
-      // Apply stricter rate limiting for 2FA verification
-      else if (is2FARoute(pathname)) {
-        const rateLimitResult = await twoFactorRateLimit(req)
-        if (rateLimitResult) return rateLimitResult
-      }
-      // Apply strict rate limiting for sensitive data operations
-      else if (isSensitiveRoute(pathname)) {
-        const rateLimitResult = await strictRateLimit(req)
-        if (rateLimitResult) return rateLimitResult
-      }
-      // Apply standard rate limiting for all other API routes
-      else if (pathname.startsWith('/api/')) {
-        const rateLimitResult = await apiRateLimit(req)
-        if (rateLimitResult) return rateLimitResult
-      }
-    }
-  }
+  // if (pathname.startsWith('/api/') || isAuthRoute(pathname) || is2FARoute(pathname)) {
+  //   // Skip rate limiting for unlimited routes
+  //   if (!isUnlimitedRoute(pathname)) {
+  //     // Apply auth rate limiting for login/signup attempts
+  //     if (isAuthRoute(pathname)) {
+  //       const rateLimitResult = await authRateLimit(req)
+  //       if (rateLimitResult) return rateLimitResult
+  //     }
+  //     // Apply stricter rate limiting for 2FA verification
+  //     else if (is2FARoute(pathname)) {
+  //       const rateLimitResult = await twoFactorRateLimit(req)
+  //       if (rateLimitResult) return rateLimitResult
+  //     }
+  //     // Apply strict rate limiting for sensitive data operations
+  //     else if (isSensitiveRoute(pathname)) {
+  //       const rateLimitResult = await strictRateLimit(req)
+  //       if (rateLimitResult) return rateLimitResult
+  //     }
+  //     // Apply standard rate limiting for all other API routes
+  //     else if (pathname.startsWith('/api/')) {
+  //       const rateLimitResult = await apiRateLimit(req)
+  //       if (rateLimitResult) return rateLimitResult
+  //     }
+  //   }
+  // }
 
   // CORS headers for API routes
   if (req.nextUrl.pathname.startsWith('/api/')) {

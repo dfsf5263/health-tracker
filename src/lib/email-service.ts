@@ -1,7 +1,21 @@
 import { Resend } from 'resend'
 
-// Initialize Resend with API key
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazy-initialized Resend client to avoid build-time errors
+let resendClient: Resend | null = null
+
+/**
+ * Get or create the Resend client instance
+ * This lazy initialization prevents build-time errors when environment variables aren't available
+ */
+function getResendClient(): Resend {
+  if (!resendClient) {
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY environment variable is not configured')
+    }
+    resendClient = new Resend(process.env.RESEND_API_KEY)
+  }
+  return resendClient
+}
 
 export interface EmailVerificationOptions {
   to: string
@@ -24,14 +38,11 @@ export async function sendBirthControlReminder({
   reminderType,
 }: BirthControlReminderOptions): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!process.env.RESEND_API_KEY) {
-      throw new Error('RESEND_API_KEY environment variable is not configured')
-    }
-
     if (!process.env.EMAIL_FROM_ADDRESS) {
       throw new Error('EMAIL_FROM_ADDRESS environment variable is not configured')
     }
 
+    const resend = getResendClient() // Lazy initialization
     const fromAddress = process.env.EMAIL_FROM_ADDRESS
     const replyToAddress = process.env.EMAIL_REPLY_TO || process.env.EMAIL_FROM_ADDRESS
 
@@ -77,14 +88,11 @@ export async function sendEmailVerification({
   verificationUrl,
 }: EmailVerificationOptions): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!process.env.RESEND_API_KEY) {
-      throw new Error('RESEND_API_KEY environment variable is not configured')
-    }
-
     if (!process.env.EMAIL_FROM_ADDRESS) {
       throw new Error('EMAIL_FROM_ADDRESS environment variable is not configured')
     }
 
+    const resend = getResendClient() // Lazy initialization
     const fromAddress = process.env.EMAIL_FROM_ADDRESS
     const replyToAddress = process.env.EMAIL_REPLY_TO || process.env.EMAIL_FROM_ADDRESS
 
@@ -284,22 +292,6 @@ function getBirthControlReminderHtml({
     ? "It's time to insert your birth control ring."
     : "It's time to remove your birth control ring."
 
-  const instructions = isInsertion
-    ? [
-        'Wash your hands thoroughly',
-        'Remove the ring from its pouch',
-        'Squeeze the ring between your thumb and index finger',
-        'Gently insert the ring into your vagina',
-        'Push it up until it feels comfortable',
-      ]
-    : [
-        'Wash your hands thoroughly',
-        'Hook your index finger under the ring',
-        'Gently pull it out',
-        'Wrap it in tissue and dispose of it properly',
-        'Mark it in your Health Tracker app',
-      ]
-
   return `
 <!DOCTYPE html>
 <html>
@@ -383,12 +375,6 @@ function getBirthControlReminderHtml({
       <p>Hi ${firstName}! ${actionMessage}</p>
     </div>
     
-    <div class="instructions">
-      <h3>Quick Instructions:</h3>
-      <ol>
-        ${instructions.map((step) => `<li>${step}</li>`).join('')}
-      </ol>
-    </div>
     
     <div class="note">
       <strong>Remember:</strong> Log this event in your Health Tracker app to keep your cycle predictions accurate and maintain your reminder schedule.
@@ -425,31 +411,12 @@ function getBirthControlReminderText({
     ? "It's time to insert your birth control ring."
     : "It's time to remove your birth control ring."
 
-  const instructions = isInsertion
-    ? [
-        'Wash your hands thoroughly',
-        'Remove the ring from its pouch',
-        'Squeeze the ring between your thumb and index finger',
-        'Gently insert the ring into your vagina',
-        'Push it up until it feels comfortable',
-      ]
-    : [
-        'Wash your hands thoroughly',
-        'Hook your index finger under the ring',
-        'Gently pull it out',
-        'Wrap it in tissue and dispose of it properly',
-        'Mark it in your Health Tracker app',
-      ]
-
   return `
 Health Tracker - Birth Control Reminder
 
 ${actionTitle} Your Ring
 
 Hi ${firstName}! ${actionMessage}
-
-Quick Instructions:
-${instructions.map((step, index) => `${index + 1}. ${step}`).join('\n')}
 
 REMEMBER: Log this event in your Health Tracker app to keep your cycle predictions accurate and maintain your reminder schedule.
 

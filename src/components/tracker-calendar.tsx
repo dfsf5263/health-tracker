@@ -644,9 +644,9 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
     const dayMonth = day.getMonth()
     const dayDate = day.getDate()
 
-    const predictedYear = predictedDate.getFullYear()
-    const predictedMonth = predictedDate.getMonth()
-    const predictedDay = predictedDate.getDate()
+    const predictedYear = predictedDate.getUTCFullYear()
+    const predictedMonth = predictedDate.getUTCMonth()
+    const predictedDay = predictedDate.getUTCDate()
 
     return dayYear === predictedYear && dayMonth === predictedMonth && dayDate === predictedDay
   }

@@ -4,7 +4,7 @@ import type { auth } from '@/lib/auth'
 import type { Session, User } from '@/lib/auth'
 
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  baseURL: process.env.NEXT_PUBLIC_APP_URL!,
   plugins: [
     inferAdditionalFields<typeof auth>(),
     twoFactorClient({

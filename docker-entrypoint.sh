@@ -9,7 +9,7 @@ echo "Starting Health Tracker with cron support..."
 echo "Starting birth control reminder cron job..."
 node scripts/birth-control-reminder-cron.js &
 CRON_PID=$!
-echo "Cron job started with PID: $CRON_PID"
+echo "Birth control reminder cron job started with PID: $CRON_PID"
 
 # Start the Next.js server
 echo "Starting Next.js server..."
