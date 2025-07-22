@@ -36,9 +36,11 @@ export async function POST(request: NextRequest) {
       return ApiError.unauthorized(requestId)
     }
 
+    const now = new Date()
+    console.log(`[DEBUG] Birth control reminder cron job triggered at: ${now.toISOString()} (UTC) - Request ID: ${requestId}`)
+    
     const currentWindow = getCurrentTimeWindow()
-    console.log(`Birth control reminder cron job triggered - Request ID: ${requestId}`)
-    console.log(`Current time window: ${currentWindow.start}-${currentWindow.end} minutes`)
+    console.log(`Current time window: ${currentWindow.hour.toString().padStart(2, '0')}:${currentWindow.start.toString().padStart(2, '0')}-${currentWindow.hour.toString().padStart(2, '0')}:${currentWindow.end.toString().padStart(2, '0')} (UTC)`)
 
     // Process all eligible users for reminders
     const reminderResults = await processReminderUsers()

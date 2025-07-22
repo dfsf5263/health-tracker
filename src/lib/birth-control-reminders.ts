@@ -61,26 +61,36 @@ export async function getEligibleUsers(): Promise<UserReminderSettings[]> {
 /**
  * Determine which 15-minute window we're currently in
  */
-export function getCurrentTimeWindow(): { start: number; end: number } {
+export function getCurrentTimeWindow(): { hour: number; start: number; end: number } {
   const now = new Date()
+  const hour = now.getUTCHours()
   const minutes = now.getUTCMinutes()
   const windowStart = Math.floor(minutes / 15) * 15
   const windowEnd = windowStart + 14 // 15-minute window (0-14, 15-29, 30-44, 45-59)
 
-  return { start: windowStart, end: windowEnd }
+  console.log(`[DEBUG] Current UTC time: ${now.toISOString()}`)
+  console.log(`[DEBUG] Current time window (UTC): ${hour.toString().padStart(2, '0')}:${windowStart.toString().padStart(2, '0')}-${hour.toString().padStart(2, '0')}:${windowEnd.toString().padStart(2, '0')}`)
+
+  return { hour, start: windowStart, end: windowEnd }
 }
 
 /**
  * Check if a time (HH:MM) falls within the current 15-minute window
  */
 export function isTimeInCurrentWindow(timeString: string): boolean {
-  if (!timeString) return false
+  if (!timeString) {
+    console.log(`[DEBUG] isTimeInCurrentWindow: No time string provided`)
+    return false
+  }
 
-  const [, minutes] = timeString.split(':').map(Number)
-  const timeMinutes = minutes
-  const { start, end } = getCurrentTimeWindow()
+  const [hours, minutes] = timeString.split(':').map(Number)
+  const { hour: currentHour, start, end } = getCurrentTimeWindow()
 
-  return timeMinutes >= start && timeMinutes <= end
+  const isInWindow = hours === currentHour && minutes >= start && minutes <= end
+  
+  console.log(`[DEBUG] Checking time ${timeString}: hour=${hours} (current=${currentHour}), minutes=${minutes} (window=${start}-${end}) => ${isInWindow ? 'IN WINDOW' : 'NOT in window'}`)
+  
+  return isInWindow
 }
 
 /**
@@ -92,9 +102,14 @@ export function getReminderTimes(user: UserReminderSettings): {
 } {
   const defaultTime = '12:00'
 
+  const insertionTime = user.ringInsertionReminderTime?.toISOString().slice(11, 16) || defaultTime
+  const removalTime = user.ringRemovalReminderTime?.toISOString().slice(11, 16) || defaultTime
+
+  console.log(`[DEBUG] User ${user.email} reminder times (UTC): insertion=${insertionTime}, removal=${removalTime}`)
+
   return {
-    insertionTime: user.ringInsertionReminderTime?.toISOString().slice(11, 16) || defaultTime,
-    removalTime: user.ringRemovalReminderTime?.toISOString().slice(11, 16) || defaultTime,
+    insertionTime,
+    removalTime,
   }
 }
 
@@ -185,7 +200,10 @@ export function isPredictionQualified(
   prediction: RingPredictionResult,
   reminderType: 'insertion' | 'removal'
 ): boolean {
-  if (!prediction.prediction) return false
+  if (!prediction.prediction) {
+    console.log(`[DEBUG] isPredictionQualified: No prediction available`)
+    return false
+  }
 
   // Check if prediction is for today
   const today = new Date()
@@ -199,6 +217,8 @@ export function isPredictionQualified(
   // Check if prediction type matches reminder type
   const typeMatches = prediction.prediction.eventType === reminderType
 
+  console.log(`[DEBUG] isPredictionQualified: predicted date=${predictedDate.toISOString()}, today=${today.toISOString()}, isToday=${isToday}, type=${prediction.prediction.eventType}, reminderType=${reminderType}, typeMatches=${typeMatches}`)
+
   return isToday && typeMatches
 }
 
@@ -208,13 +228,18 @@ export function isPredictionQualified(
 export async function qualifyUserForReminder(
   user: UserReminderSettings
 ): Promise<ReminderQualification> {
+  console.log(`[DEBUG] Qualifying user ${user.email} for reminder`)
+  
   const { insertionTime, removalTime } = getReminderTimes(user)
 
   // Check if either reminder time is in the current window
   const insertionInWindow = isTimeInCurrentWindow(insertionTime)
   const removalInWindow = isTimeInCurrentWindow(removalTime)
 
+  console.log(`[DEBUG] Time window check results: insertion=${insertionInWindow}, removal=${removalInWindow}`)
+
   if (!insertionInWindow && !removalInWindow) {
+    console.log(`[DEBUG] User ${user.email}: No reminder times in current window`)
     return {
       shouldSendReminder: false,
       reminderType: null,
@@ -224,9 +249,14 @@ export async function qualifyUserForReminder(
 
   // Check insertion reminder
   if (insertionInWindow) {
+    console.log(`[DEBUG] Checking insertion reminder for user ${user.email}`)
+    
     // First check if they have today's insertion event
     const hasTodaysInsertion = await hasTodaysEvent(user.id, 'insertion')
+    console.log(`[DEBUG] Today's insertion event check: ${hasTodaysInsertion}`)
+    
     if (hasTodaysInsertion) {
+      console.log(`[DEBUG] User ${user.email}: Qualifying for insertion reminder (has today's event)`)
       return {
         shouldSendReminder: true,
         reminderType: 'insertion',
@@ -236,7 +266,11 @@ export async function qualifyUserForReminder(
 
     // If no today's event, check prediction
     const prediction = await getRingPrediction(user.id)
-    if (prediction && isPredictionQualified(prediction, 'insertion')) {
+    const predictionQualified = prediction && isPredictionQualified(prediction, 'insertion')
+    console.log(`[DEBUG] Insertion prediction check: ${predictionQualified}`)
+    
+    if (predictionQualified) {
+      console.log(`[DEBUG] User ${user.email}: Qualifying for insertion reminder (predicted event)`)
       return {
         shouldSendReminder: true,
         reminderType: 'insertion',
@@ -247,9 +281,14 @@ export async function qualifyUserForReminder(
 
   // Check removal reminder
   if (removalInWindow) {
+    console.log(`[DEBUG] Checking removal reminder for user ${user.email}`)
+    
     // First check if they have today's removal event
     const hasTodaysRemoval = await hasTodaysEvent(user.id, 'removal')
+    console.log(`[DEBUG] Today's removal event check: ${hasTodaysRemoval}`)
+    
     if (hasTodaysRemoval) {
+      console.log(`[DEBUG] User ${user.email}: Qualifying for removal reminder (has today's event)`)
       return {
         shouldSendReminder: true,
         reminderType: 'removal',
@@ -259,7 +298,11 @@ export async function qualifyUserForReminder(
 
     // If no today's event, check prediction
     const prediction = await getRingPrediction(user.id)
-    if (prediction && isPredictionQualified(prediction, 'removal')) {
+    const predictionQualified = prediction && isPredictionQualified(prediction, 'removal')
+    console.log(`[DEBUG] Removal prediction check: ${predictionQualified}`)
+    
+    if (predictionQualified) {
+      console.log(`[DEBUG] User ${user.email}: Qualifying for removal reminder (predicted event)`)
       return {
         shouldSendReminder: true,
         reminderType: 'removal',
@@ -268,6 +311,7 @@ export async function qualifyUserForReminder(
     }
   }
 
+  console.log(`[DEBUG] User ${user.email}: No qualifying events or predictions found`)
   return {
     shouldSendReminder: false,
     reminderType: null,
@@ -279,6 +323,10 @@ export async function qualifyUserForReminder(
  * Process all eligible users for birth control reminders
  */
 export async function processReminderUsers(): Promise<ReminderResult[]> {
+  const jobStartTime = new Date()
+  console.log(`[DEBUG] Birth control reminder job started at: ${jobStartTime.toISOString()} (UTC)`)
+  console.log(`[DEBUG] All times in this system are in UTC. Users should set their reminder times in UTC.`)
+  
   const users = await getEligibleUsers()
   const results: ReminderResult[] = []
 

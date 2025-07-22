@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getSessionCookie } from 'better-auth/cookies'
 import { standardApiSizeLimit } from '@/lib/middleware/request-size'
-import { apiRateLimit, authRateLimit, strictRateLimit, twoFactorRateLimit } from '@/lib/rate-limit'
 
 // Define public routes that don't require authentication
 const isPublicRoute = (pathname: string) => {
@@ -27,58 +26,11 @@ const isPartialAuthRoute = (pathname: string) => {
   return partialAuthPaths.includes(pathname)
 }
 
-// Define authentication routes (user login attempts)
-const isAuthRoute = (pathname: string) => {
-  return pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up')
-}
-
-// Define 2FA verification routes that need special rate limiting
-const is2FARoute = (pathname: string) => {
-  return pathname === '/two-factor' || pathname.startsWith('/api/auth/two-factor/verify')
-}
-
-// Define routes that should have no rate limiting
-const isUnlimitedRoute = (pathname: string) => {
-  return pathname === '/api/health' || pathname.startsWith('/api/cron/')
-}
-
-// Define routes for sensitive operations
-const isSensitiveRoute = (pathname: string) => {
-  const sensitivePaths = ['/api/birth-control-days', '/api/period-days', '/api/migraines']
-
-  return sensitivePaths.some((path) => pathname.startsWith(path))
-}
 
 export default async function middleware(req: NextRequest) {
   const response = NextResponse.next()
   const pathname = req.nextUrl.pathname
 
-  // Apply rate limiting for API routes, auth routes, and 2FA routes
-  // if (pathname.startsWith('/api/') || isAuthRoute(pathname) || is2FARoute(pathname)) {
-  //   // Skip rate limiting for unlimited routes
-  //   if (!isUnlimitedRoute(pathname)) {
-  //     // Apply auth rate limiting for login/signup attempts
-  //     if (isAuthRoute(pathname)) {
-  //       const rateLimitResult = await authRateLimit(req)
-  //       if (rateLimitResult) return rateLimitResult
-  //     }
-  //     // Apply stricter rate limiting for 2FA verification
-  //     else if (is2FARoute(pathname)) {
-  //       const rateLimitResult = await twoFactorRateLimit(req)
-  //       if (rateLimitResult) return rateLimitResult
-  //     }
-  //     // Apply strict rate limiting for sensitive data operations
-  //     else if (isSensitiveRoute(pathname)) {
-  //       const rateLimitResult = await strictRateLimit(req)
-  //       if (rateLimitResult) return rateLimitResult
-  //     }
-  //     // Apply standard rate limiting for all other API routes
-  //     else if (pathname.startsWith('/api/')) {
-  //       const rateLimitResult = await apiRateLimit(req)
-  //       if (rateLimitResult) return rateLimitResult
-  //     }
-  //   }
-  // }
 
   // CORS headers for API routes
   if (req.nextUrl.pathname.startsWith('/api/')) {

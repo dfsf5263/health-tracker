@@ -158,7 +158,7 @@ export function AccountForm() {
                   disabled={isLoading}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Time of day to receive reminders to insert your ring
+                  Time to receive reminders to insert your ring
                 </p>
               </div>
 
@@ -174,7 +174,7 @@ export function AccountForm() {
                   disabled={isLoading}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Time of day to receive reminders to remove your ring
+                  Time to receive reminders to remove your ring
                 </p>
               </div>
             </div>
