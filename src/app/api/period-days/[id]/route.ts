@@ -6,6 +6,7 @@ import { syncCycles } from '@/lib/sync-cycles'
 import { Flow, Color } from '@prisma/client'
 import { logApiError } from '@/lib/error-logger'
 import { ApiError, generateRequestId } from '@/lib/api-response'
+import { withApiLogging } from '@/lib/middleware/with-api-logging'
 
 const updatePeriodDaySchema = z.object({
   date: z
@@ -19,78 +20,95 @@ const updatePeriodDaySchema = z.object({
   notes: z.string().optional().nullable(),
 })
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const requestId = generateRequestId()
-  let userId: string | null = null
-  let user: { id: string } | null = null
-  let body: unknown = null
-  let id: string | null = null
-  let existingPeriodDay: {
-    id: string
-    date: Date
-    flow: string
-    color: string
-    notes?: string | null
-  } | null = null
+export const PUT = withApiLogging(
+  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    const requestId = generateRequestId()
+    let userId: string | null = null
+    let user: { id: string } | null = null
+    let body: unknown = null
+    let id: string | null = null
+    let existingPeriodDay: {
+      id: string
+      date: Date
+      flow: string
+      color: string
+      notes?: string | null
+    } | null = null
 
-  try {
-    const authContext = await requireAuth()
-    if (authContext instanceof NextResponse) {
-      return authContext
-    }
+    try {
+      const authContext = await requireAuth()
+      if (authContext instanceof NextResponse) {
+        return authContext
+      }
 
-    const { userId: authUserId, user: authUser } = authContext
-    userId = authUserId
-    user = authUser
+      const { userId: authUserId, user: authUser } = authContext
+      userId = authUserId
+      user = authUser
 
-    body = await request.json()
-    const validatedData = updatePeriodDaySchema.parse(body)
+      body = await request.json()
+      const validatedData = updatePeriodDaySchema.parse(body)
 
-    const { id: paramId } = await params
-    id = paramId
-    existingPeriodDay = await prisma.periodDay.findFirst({
-      where: {
-        id,
-        userId: user.id,
-      },
-    })
+      const { id: paramId } = await params
+      id = paramId
+      existingPeriodDay = await prisma.periodDay.findFirst({
+        where: {
+          id,
+          userId: user.id,
+        },
+      })
 
-    if (!existingPeriodDay) {
-      return ApiError.notFound('Period day', requestId)
-    }
+      if (!existingPeriodDay) {
+        return ApiError.notFound('Period day', requestId)
+      }
 
-    const updateData: Record<string, unknown> = {}
+      const updateData: Record<string, unknown> = {}
 
-    if (validatedData.date) {
-      // Parse YYYY-MM-DD format directly to avoid timezone issues
-      const [year, month, day] = validatedData.date.split('-').map(Number)
-      const date = new Date(year, month - 1, day)
-      date.setUTCHours(0, 0, 0, 0)
-      updateData.date = date
-    }
+      if (validatedData.date) {
+        // Parse YYYY-MM-DD format directly to avoid timezone issues
+        const [year, month, day] = validatedData.date.split('-').map(Number)
+        const date = new Date(year, month - 1, day)
+        date.setUTCHours(0, 0, 0, 0)
+        updateData.date = date
+      }
 
-    if (validatedData.flow !== undefined) {
-      updateData.flow = validatedData.flow
-    }
+      if (validatedData.flow !== undefined) {
+        updateData.flow = validatedData.flow
+      }
 
-    if (validatedData.color !== undefined) {
-      updateData.color = validatedData.color
-    }
+      if (validatedData.color !== undefined) {
+        updateData.color = validatedData.color
+      }
 
-    if (validatedData.notes !== undefined) {
-      updateData.notes = validatedData.notes
-    }
+      if (validatedData.notes !== undefined) {
+        updateData.notes = validatedData.notes
+      }
 
-    const updatedPeriodDay = await prisma.periodDay.update({
-      where: { id },
-      data: updateData,
-    })
+      const updatedPeriodDay = await prisma.periodDay.update({
+        where: { id },
+        data: updateData,
+      })
 
-    await syncCycles(user.id)
+      await syncCycles(user.id)
 
-    return NextResponse.json(updatedPeriodDay)
-  } catch (error) {
-    if (error instanceof z.ZodError) {
+      return NextResponse.json(updatedPeriodDay)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        await logApiError({
+          request,
+          error,
+          context: {
+            requestBody: body,
+            periodDayId: id,
+            userId,
+            userDbId: user?.id,
+            existingPeriodDay,
+          },
+          operation: 'validate period day update',
+          requestId,
+        })
+        return ApiError.validation(error, requestId)
+      }
+
       await logApiError({
         request,
         error,
@@ -101,28 +119,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           userDbId: user?.id,
           existingPeriodDay,
         },
-        operation: 'validate period day update',
+        operation: 'update period day',
         requestId,
       })
-      return ApiError.validation(error, requestId)
+      return ApiError.internal('update period day', requestId)
     }
-
-    await logApiError({
-      request,
-      error,
-      context: {
-        requestBody: body,
-        periodDayId: id,
-        userId,
-        userDbId: user?.id,
-        existingPeriodDay,
-      },
-      operation: 'update period day',
-      requestId,
-    })
-    return ApiError.internal('update period day', requestId)
   }
-}
+)
 
 export async function DELETE(
   request: NextRequest,

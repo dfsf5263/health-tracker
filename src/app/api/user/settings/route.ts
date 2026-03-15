@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { logApiError } from '@/lib/error-logger'
 import { ApiError, generateRequestId } from '@/lib/api-response'
+import { withApiLogging } from '@/lib/middleware/with-api-logging'
 
 const updateSettingsSchema = z.object({
   birthControlEmailNotifications: z.boolean().optional(),
@@ -17,7 +18,7 @@ const updateSettingsSchema = z.object({
     .optional(),
 })
 
-export async function GET(request: NextRequest) {
+export const GET = withApiLogging(async (request: NextRequest) => {
   const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
@@ -70,9 +71,9 @@ export async function GET(request: NextRequest) {
     })
     return ApiError.internal('get user settings', requestId)
   }
-}
+})
 
-export async function PUT(request: NextRequest) {
+export const PUT = withApiLogging(async (request: NextRequest) => {
   const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
@@ -161,4 +162,4 @@ export async function PUT(request: NextRequest) {
     })
     return ApiError.internal('update user settings', requestId)
   }
-}
+})

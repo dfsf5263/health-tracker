@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { logApiError } from '@/lib/error-logger'
 import { ApiError, generateRequestId } from '@/lib/api-response'
+import { withApiLogging } from '@/lib/middleware/with-api-logging'
 
 const updateIrregularPhysicalTypeSchema = z.object({
   name: z
@@ -14,104 +15,132 @@ const updateIrregularPhysicalTypeSchema = z.object({
     .optional(),
 })
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const requestId = generateRequestId()
-  let userId: string | null = null
-  let user: { id: string } | null = null
-  let id: string | null = null
+export const GET = withApiLogging(
+  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    const requestId = generateRequestId()
+    let userId: string | null = null
+    let user: { id: string } | null = null
+    let id: string | null = null
 
-  try {
-    const authContext = await requireAuth()
-    if (authContext instanceof NextResponse) {
-      return authContext
+    try {
+      const authContext = await requireAuth()
+      if (authContext instanceof NextResponse) {
+        return authContext
+      }
+
+      const { userId: authUserId, user: authUser } = authContext
+      userId = authUserId
+      user = authUser
+
+      const { id: paramId } = await params
+      id = paramId
+      const irregularPhysicalType = await prisma.irregularPhysicalType.findFirst({
+        where: {
+          id,
+          userId: user.id,
+        },
+      })
+
+      if (!irregularPhysicalType) {
+        return ApiError.notFound('Irregular physical type', requestId)
+      }
+
+      return NextResponse.json(irregularPhysicalType)
+    } catch (error) {
+      await logApiError({
+        request,
+        error,
+        operation: 'fetching irregular physical type',
+        context: {
+          irregularPhysicalTypeId: id,
+          userId,
+          userDbId: user?.id,
+        },
+        requestId,
+      })
+      return ApiError.internal('fetch irregular physical type', requestId)
     }
-
-    const { userId: authUserId, user: authUser } = authContext
-    userId = authUserId
-    user = authUser
-
-    const { id: paramId } = await params
-    id = paramId
-    const irregularPhysicalType = await prisma.irregularPhysicalType.findFirst({
-      where: {
-        id,
-        userId: user.id,
-      },
-    })
-
-    if (!irregularPhysicalType) {
-      return ApiError.notFound('Irregular physical type', requestId)
-    }
-
-    return NextResponse.json(irregularPhysicalType)
-  } catch (error) {
-    await logApiError({
-      request,
-      error,
-      operation: 'fetching irregular physical type',
-      context: {
-        irregularPhysicalTypeId: id,
-        userId,
-        userDbId: user?.id,
-      },
-      requestId,
-    })
-    return ApiError.internal('fetch irregular physical type', requestId)
   }
-}
+)
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const requestId = generateRequestId()
-  let userId: string | null = null
-  let user: { id: string } | null = null
-  let body: unknown = null
-  let validatedData: z.infer<typeof updateIrregularPhysicalTypeSchema> | null = null
-  let id: string | null = null
-  let existingIrregularPhysicalType: {
-    id: string
-    name: string
-    userId: string
-  } | null = null
+export const PUT = withApiLogging(
+  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    const requestId = generateRequestId()
+    let userId: string | null = null
+    let user: { id: string } | null = null
+    let body: unknown = null
+    let validatedData: z.infer<typeof updateIrregularPhysicalTypeSchema> | null = null
+    let id: string | null = null
+    let existingIrregularPhysicalType: {
+      id: string
+      name: string
+      userId: string
+    } | null = null
 
-  try {
-    const authContext = await requireAuth()
-    if (authContext instanceof NextResponse) {
-      return authContext
-    }
+    try {
+      const authContext = await requireAuth()
+      if (authContext instanceof NextResponse) {
+        return authContext
+      }
 
-    const { userId: authUserId, user: authUser } = authContext
-    userId = authUserId
-    user = authUser
+      const { userId: authUserId, user: authUser } = authContext
+      userId = authUserId
+      user = authUser
 
-    body = await request.json()
-    validatedData = updateIrregularPhysicalTypeSchema.parse(body)
+      body = await request.json()
+      validatedData = updateIrregularPhysicalTypeSchema.parse(body)
 
-    const { id: paramId } = await params
-    id = paramId
-    existingIrregularPhysicalType = await prisma.irregularPhysicalType.findFirst({
-      where: {
-        id,
-        userId: user.id,
-      },
-    })
+      const { id: paramId } = await params
+      id = paramId
+      existingIrregularPhysicalType = await prisma.irregularPhysicalType.findFirst({
+        where: {
+          id,
+          userId: user.id,
+        },
+      })
 
-    if (!existingIrregularPhysicalType) {
-      return ApiError.notFound('Irregular physical type', requestId)
-    }
+      if (!existingIrregularPhysicalType) {
+        return ApiError.notFound('Irregular physical type', requestId)
+      }
 
-    const updateData: Record<string, unknown> = {}
-    if (validatedData.name !== undefined) {
-      updateData.name = validatedData.name
-    }
+      const updateData: Record<string, unknown> = {}
+      if (validatedData.name !== undefined) {
+        updateData.name = validatedData.name
+      }
 
-    const updatedIrregularPhysicalType = await prisma.irregularPhysicalType.update({
-      where: { id },
-      data: updateData,
-    })
+      const updatedIrregularPhysicalType = await prisma.irregularPhysicalType.update({
+        where: { id },
+        data: updateData,
+      })
 
-    return NextResponse.json(updatedIrregularPhysicalType)
-  } catch (error) {
-    if (error instanceof z.ZodError) {
+      return NextResponse.json(updatedIrregularPhysicalType)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        await logApiError({
+          request,
+          error,
+          operation: 'updating irregular physical type',
+          context: {
+            requestBody: body,
+            irregularPhysicalTypeId: id,
+            userId,
+            userDbId: user?.id,
+            validationError: error.issues,
+            existingIrregularPhysicalType,
+          },
+          requestId,
+        })
+        return ApiError.validation(error, requestId)
+      }
+
+      // Handle unique constraint violation (duplicate name)
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
+        return ApiError.conflict(
+          `Irregular physical type "${validatedData?.name}" already exists. Please use a different name.`,
+          requestId
+        )
+      }
+
       await logApiError({
         request,
         error,
@@ -121,39 +150,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           irregularPhysicalTypeId: id,
           userId,
           userDbId: user?.id,
-          validationError: error.issues,
+          validatedData,
           existingIrregularPhysicalType,
         },
         requestId,
       })
-      return ApiError.validation(error, requestId)
+      return ApiError.internal('update irregular physical type', requestId)
     }
-
-    // Handle unique constraint violation (duplicate name)
-    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
-      return ApiError.conflict(
-        `Irregular physical type "${validatedData?.name}" already exists. Please use a different name.`,
-        requestId
-      )
-    }
-
-    await logApiError({
-      request,
-      error,
-      operation: 'updating irregular physical type',
-      context: {
-        requestBody: body,
-        irregularPhysicalTypeId: id,
-        userId,
-        userDbId: user?.id,
-        validatedData,
-        existingIrregularPhysicalType,
-      },
-      requestId,
-    })
-    return ApiError.internal('update irregular physical type', requestId)
   }
-}
+)
 
 export async function DELETE(
   request: NextRequest,

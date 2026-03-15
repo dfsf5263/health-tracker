@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { logApiError } from '@/lib/error-logger'
 import { ApiError, generateRequestId } from '@/lib/api-response'
+import { withApiLogging } from '@/lib/middleware/with-api-logging'
 
 const updateMigraineMedicationTypeSchema = z.object({
   name: z
@@ -13,52 +14,77 @@ const updateMigraineMedicationTypeSchema = z.object({
     .trim(),
 })
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const requestId = generateRequestId()
-  let userId: string | null = null
-  let user: { id: string } | null = null
-  let body: unknown = null
-  let validatedData: z.infer<typeof updateMigraineMedicationTypeSchema> | null = null
-  let id: string | null = null
+export const PUT = withApiLogging(
+  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    const requestId = generateRequestId()
+    let userId: string | null = null
+    let user: { id: string } | null = null
+    let body: unknown = null
+    let validatedData: z.infer<typeof updateMigraineMedicationTypeSchema> | null = null
+    let id: string | null = null
 
-  try {
-    const authContext = await requireAuth()
-    if (authContext instanceof NextResponse) {
-      return authContext
-    }
+    try {
+      const authContext = await requireAuth()
+      if (authContext instanceof NextResponse) {
+        return authContext
+      }
 
-    const { userId: authUserId, user: authUser } = authContext
-    userId = authUserId
-    user = authUser
+      const { userId: authUserId, user: authUser } = authContext
+      userId = authUserId
+      user = authUser
 
-    body = await request.json()
-    validatedData = updateMigraineMedicationTypeSchema.parse(body)
+      body = await request.json()
+      validatedData = updateMigraineMedicationTypeSchema.parse(body)
 
-    const { id: paramId } = await params
-    id = paramId
+      const { id: paramId } = await params
+      id = paramId
 
-    // Check if the migraine medication type exists and belongs to the user
-    const existingType = await prisma.migraineMedicationType.findFirst({
-      where: {
-        id,
-        userId: user.id,
-      },
-    })
+      // Check if the migraine medication type exists and belongs to the user
+      const existingType = await prisma.migraineMedicationType.findFirst({
+        where: {
+          id,
+          userId: user.id,
+        },
+      })
 
-    if (!existingType) {
-      return ApiError.notFound('Migraine medication type', requestId)
-    }
+      if (!existingType) {
+        return ApiError.notFound('Migraine medication type', requestId)
+      }
 
-    const updatedType = await prisma.migraineMedicationType.update({
-      where: { id },
-      data: {
-        name: validatedData.name,
-      },
-    })
+      const updatedType = await prisma.migraineMedicationType.update({
+        where: { id },
+        data: {
+          name: validatedData.name,
+        },
+      })
 
-    return NextResponse.json(updatedType)
-  } catch (error) {
-    if (error instanceof z.ZodError) {
+      return NextResponse.json(updatedType)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        await logApiError({
+          request,
+          error,
+          operation: 'updating migraine medication type',
+          context: {
+            requestBody: body,
+            typeId: id,
+            userId,
+            userDbId: user?.id,
+            validationError: error.issues,
+          },
+          requestId,
+        })
+        return ApiError.validation(error, requestId)
+      }
+
+      // Handle unique constraint violation (duplicate name)
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
+        return ApiError.conflict(
+          `Migraine medication type "${validatedData?.name}" already exists. Please use a different name.`,
+          requestId
+        )
+      }
+
       await logApiError({
         request,
         error,
@@ -68,37 +94,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           typeId: id,
           userId,
           userDbId: user?.id,
-          validationError: error.issues,
+          validatedData,
         },
         requestId,
       })
-      return ApiError.validation(error, requestId)
+      return ApiError.internal('update migraine medication type', requestId)
     }
-
-    // Handle unique constraint violation (duplicate name)
-    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
-      return ApiError.conflict(
-        `Migraine medication type "${validatedData?.name}" already exists. Please use a different name.`,
-        requestId
-      )
-    }
-
-    await logApiError({
-      request,
-      error,
-      operation: 'updating migraine medication type',
-      context: {
-        requestBody: body,
-        typeId: id,
-        userId,
-        userDbId: user?.id,
-        validatedData,
-      },
-      requestId,
-    })
-    return ApiError.internal('update migraine medication type', requestId)
   }
-}
+)
 
 export async function DELETE(
   request: NextRequest,

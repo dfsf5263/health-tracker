@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { logApiError } from '@/lib/error-logger'
 import { ApiError, generateRequestId } from '@/lib/api-response'
+import { withApiLogging } from '@/lib/middleware/with-api-logging'
 
 const createMigraineReliefTypeSchema = z.object({
   name: z
@@ -13,7 +14,7 @@ const createMigraineReliefTypeSchema = z.object({
     .trim(),
 })
 
-export async function GET(request: NextRequest) {
+export const GET = withApiLogging(async (request: NextRequest) => {
   const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
@@ -47,9 +48,9 @@ export async function GET(request: NextRequest) {
     })
     return ApiError.internal('fetch migraine relief types', requestId)
   }
-}
+})
 
-export async function POST(request: NextRequest) {
+export const POST = withApiLogging(async (request: NextRequest) => {
   const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
@@ -116,4 +117,4 @@ export async function POST(request: NextRequest) {
     })
     return ApiError.internal('create migraine relief type', requestId)
   }
-}
+})

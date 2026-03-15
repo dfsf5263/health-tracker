@@ -3,8 +3,9 @@ import { logApiError } from '@/lib/error-logger'
 import { ApiError, generateRequestId } from '@/lib/api-response'
 import { processReminderUsers, getCurrentTimeWindow } from '@/lib/birth-control-reminders'
 import { sendBirthControlReminder } from '@/lib/email-service'
+import { withApiLogging } from '@/lib/middleware/with-api-logging'
 
-export async function POST(request: NextRequest) {
+export const POST = withApiLogging(async (request: NextRequest) => {
   const requestId = generateRequestId()
 
   try {
@@ -124,4 +125,4 @@ export async function POST(request: NextRequest) {
     })
     return ApiError.internal('birth control reminder cron job', requestId)
   }
-}
+})

@@ -1,13 +1,23 @@
 #!/bin/bash
 set -e
 
+export DOCKER_BUILDKIT=1
+
 # Health Tracker Docker Build Script
-# Builds and optionally pushes the Docker image to Docker Hub
+# Builds and optionally pushes the Docker image to GitHub Container Registry
 
 # Configuration
-DOCKER_REGISTRY="dfsf5263"
+DOCKER_REGISTRY="ghcr.io"
+GITHUB_USERNAME="dfsf5263"
 IMAGE_NAME="health-tracker"
-FULL_IMAGE_NAME="${DOCKER_REGISTRY}/${IMAGE_NAME}"
+FULL_IMAGE_NAME="${DOCKER_REGISTRY}/${GITHUB_USERNAME}/${IMAGE_NAME}"
+
+# Load GHCR_PAT from .env in the project root if present
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="${SCRIPT_DIR}/../.env"
+if [ -f "${ENV_FILE}" ]; then
+    GHCR_PAT=$(grep -E '^GHCR_PAT=' "${ENV_FILE}" | cut -d '=' -f2- | tr -d '"\r')
+fi
 
 # Default values
 PUSH=false
@@ -44,7 +54,7 @@ show_usage() {
     echo "Usage: $0 [OPTIONS]"
     echo ""
     echo "Options:"
-    echo "  -p, --push                     Push image to Docker Hub after building"
+    echo "  -p, --push                     Push image to GHCR after building"
     echo "  -t, --tag TAG                  Tag for the image (default: latest)"
     echo "  -v, --version VER              Version tag (will create additional tag)"
     echo "      --platform PLATFORM       Target platform (default: linux/amd64)"
@@ -118,6 +128,7 @@ PRIMARY_TAG="${FULL_IMAGE_NAME}:${TAG}"
 log "Building with Better Auth (all configuration provided at runtime)"
 
 if docker build \
+    --progress=plain \
     --platform "${PLATFORM}" \
     -t "${PRIMARY_TAG}" .; then
     success "Docker image built successfully: ${PRIMARY_TAG}"
@@ -139,16 +150,24 @@ if [ -n "$VERSION" ]; then
     fi
 fi
 
-# Push to Docker Hub if requested
+# Push to GHCR if requested
 if [ "$PUSH" = true ]; then
-    log "Pushing images to Docker Hub..."
-    
-    # Check if logged in to Docker Hub
-    if ! docker info | grep -q "Username:"; then
-        warning "Not logged in to Docker Hub. Attempting to login..."
-        if ! docker login; then
-            error "Docker Hub login failed"
-            exit 1
+    log "Pushing images to GHCR..."
+
+    # Check if logged in to GHCR
+    if ! docker info | grep -q "ghcr.io"; then
+        warning "Not logged in to GHCR. Attempting to login..."
+        if [ -n "${GHCR_PAT}" ]; then
+            if ! echo "${GHCR_PAT}" | docker login ghcr.io -u "${GITHUB_USERNAME}" --password-stdin; then
+                error "GHCR login failed"
+                exit 1
+            fi
+        else
+            warning "GHCR_PAT not found in .env — falling back to interactive login"
+            if ! docker login ghcr.io -u "${GITHUB_USERNAME}"; then
+                error "GHCR login failed"
+                exit 1
+            fi
         fi
     fi
     
@@ -172,7 +191,7 @@ if [ "$PUSH" = true ]; then
         fi
     fi
     
-    success "All images pushed successfully to Docker Hub!"
+    success "All images pushed successfully to GHCR!"
 fi
 
 # Show final summary
@@ -186,7 +205,7 @@ fi
 
 if [ "$PUSH" = true ]; then
     echo ""
-    echo "Images are now available on Docker Hub:"
+    echo "Images are now available on GHCR:"
     echo "  docker pull ${PRIMARY_TAG}"
     if [ -n "$VERSION" ]; then
         echo "  docker pull ${VERSION_TAG}"
