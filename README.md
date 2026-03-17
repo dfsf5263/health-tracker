@@ -24,6 +24,21 @@
   <img src="https://img.shields.io/badge/Playwright-1.58-2EAD33?style=for-the-badge&logo=playwright&logoColor=white" alt="Playwright" />
 </p>
 
+## Screenshots
+
+<p align="center">
+  <img src="screenshots/dashboard.png" alt="Dashboard" width="49%" />
+  <img src="screenshots/cycle_tracking.png" alt="Cycle Tracking" width="49%" />
+</p>
+<p align="center">
+  <img src="screenshots/add_event.png" alt="Add Event" width="49%" />
+  <img src="screenshots/add_event_period.png" alt="Add Period Event" width="49%" />
+</p>
+<p align="center">
+  <img src="screenshots/add_event_birth_control.png" alt="Add Birth Control Event" width="49%" />
+  <img src="screenshots/add_event_migraine.gif" alt="Add Migraine Event" width="49%" />
+</p>
+
 ## Why Self-Host?
 
 Health data is deeply personal. Health Tracker is designed to run on your own hardware — a home server, a VPS, or anywhere you choose — so your cycle history, migraine logs, and health patterns never leave your control. No third-party accounts, no data harvesting, no subscriptions. Just a Docker image you can deploy in minutes.
