@@ -24,20 +24,43 @@
   <img src="https://img.shields.io/badge/Playwright-1.58-2EAD33?style=for-the-badge&logo=playwright&logoColor=white" alt="Playwright" />
 </p>
 
-## Screenshots
+<p align="center">
+  <picture>
+    <img src="screenshots/dashboard.png" alt="Health Tracker Dashboard" width="800" />
+  </picture>
+</p>
 
-<p align="center">
-  <img src="screenshots/dashboard.png" alt="Dashboard" width="49%" />
-  <img src="screenshots/cycle_tracking.png" alt="Cycle Tracking" width="49%" />
-</p>
-<p align="center">
-  <img src="screenshots/add_event.png" alt="Add Event" width="49%" />
-  <img src="screenshots/add_event_period.png" alt="Add Period Event" width="49%" />
-</p>
-<p align="center">
-  <img src="screenshots/add_event_birth_control.png" alt="Add Birth Control Event" width="49%" />
-  <img src="screenshots/add_event_migraine.gif" alt="Add Migraine Event" width="49%" />
-</p>
+<details>
+<summary><strong>📸 Screenshots</strong></summary>
+
+<br />
+
+<table>
+  <tr>
+    <td align="center"><strong>Cycle Tracking</strong></td>
+    <td align="center"><strong>Add Event</strong></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/cycle_tracking.png" alt="Cycle Tracking" width="400" /></td>
+    <td><img src="screenshots/add_event.png" alt="Add Event" width="400" /></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Add Period Event</strong></td>
+    <td align="center"><strong>Add Birth Control Event</strong></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/add_event_period.png" alt="Add Period Event" width="400" /></td>
+    <td><img src="screenshots/add_event_birth_control.png" alt="Add Birth Control Event" width="400" /></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><strong>Add Migraine Event</strong></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="screenshots/add_event_migraine.gif" alt="Add Migraine Event" width="400" /></td>
+  </tr>
+</table>
+
+</details>
 
 ## Why Self-Host?
 
