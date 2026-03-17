@@ -1,10 +1,10 @@
-import { requireAuth } from '@/lib/auth-middleware'
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { ApiError } from '@/lib/api-response'
+import { requireAuth } from '@/lib/auth-middleware'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
 
 const updateNormalPhysicalDaySchema = z.object({
   date: z
@@ -17,7 +17,6 @@ const updateNormalPhysicalDaySchema = z.object({
 
 export const GET = withApiLogging(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const requestId = generateRequestId()
     let userId: string | null = null
     let user: { id: string } | null = null
     let id: string | null = null
@@ -45,7 +44,7 @@ export const GET = withApiLogging(
       })
 
       if (!normalPhysicalDay) {
-        return ApiError.notFound('Normal physical day', requestId)
+        return ApiError.notFound('Normal physical day')
       }
 
       return NextResponse.json(normalPhysicalDay)
@@ -59,16 +58,14 @@ export const GET = withApiLogging(
           userId,
           userDbId: user?.id,
         },
-        requestId,
       })
-      return ApiError.internal('fetch normal physical day', requestId)
+      return ApiError.internal('fetch normal physical day')
     }
   }
 )
 
 export const PUT = withApiLogging(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const requestId = generateRequestId()
     let userId: string | null = null
     let user: { id: string } | null = null
     let body: unknown = null
@@ -105,7 +102,7 @@ export const PUT = withApiLogging(
       })
 
       if (!existingNormalPhysicalDay) {
-        return ApiError.notFound('Normal physical day', requestId)
+        return ApiError.notFound('Normal physical day')
       }
 
       // If typeId is being updated, verify the new type belongs to the user
@@ -118,7 +115,7 @@ export const PUT = withApiLogging(
         })
 
         if (!normalPhysicalType) {
-          return ApiError.notFound('Normal physical type', requestId)
+          return ApiError.notFound('Normal physical type')
         }
       }
 
@@ -156,16 +153,14 @@ export const PUT = withApiLogging(
             validationError: error.issues,
             existingNormalPhysicalDay,
           },
-          requestId,
         })
-        return ApiError.validation(error, requestId)
+        return ApiError.validation(error)
       }
 
       // Handle unique constraint violation (duplicate date + type for user)
       if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
         return ApiError.conflict(
-          `Normal physical day for this date and type already exists. Please choose a different date or type.`,
-          requestId
+          `Normal physical day for this date and type already exists. Please choose a different date or type.`
         )
       }
 
@@ -181,9 +176,8 @@ export const PUT = withApiLogging(
           validatedData,
           existingNormalPhysicalDay,
         },
-        requestId,
       })
-      return ApiError.internal('update normal physical day', requestId)
+      return ApiError.internal('update normal physical day')
     }
   }
 )
@@ -192,7 +186,6 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let id: string | null = null
@@ -224,7 +217,7 @@ export async function DELETE(
     })
 
     if (!existingNormalPhysicalDay) {
-      return ApiError.notFound('Normal physical day', requestId)
+      return ApiError.notFound('Normal physical day')
     }
 
     await prisma.normalPhysicalDay.delete({
@@ -243,8 +236,7 @@ export async function DELETE(
         userDbId: user?.id,
         existingNormalPhysicalDay,
       },
-      requestId,
     })
-    return ApiError.internal('delete normal physical day', requestId)
+    return ApiError.internal('delete normal physical day')
   }
 }

@@ -1,10 +1,10 @@
-import { requireAuth } from '@/lib/auth-middleware'
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { ApiError } from '@/lib/api-response'
+import { requireAuth } from '@/lib/auth-middleware'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
 
 const createBirthControlTypeSchema = z.object({
   name: z
@@ -17,7 +17,6 @@ const createBirthControlTypeSchema = z.object({
 })
 
 export const GET = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
 
@@ -46,14 +45,12 @@ export const GET = withApiLogging(async (request: NextRequest) => {
         userId,
         userDbId: user?.id,
       },
-      requestId,
     })
-    return ApiError.internal('fetch birth control types', requestId)
+    return ApiError.internal('fetch birth control types')
   }
 })
 
 export const POST = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
@@ -83,8 +80,7 @@ export const POST = withApiLogging(async (request: NextRequest) => {
 
       if (existingInsertionType) {
         return ApiError.conflict(
-          `Only one birth control type can be designated for vaginal ring insertion. "${existingInsertionType.name}" is already set for insertion.`,
-          requestId
+          `Only one birth control type can be designated for vaginal ring insertion. "${existingInsertionType.name}" is already set for insertion.`
         )
       }
     }
@@ -100,8 +96,7 @@ export const POST = withApiLogging(async (request: NextRequest) => {
 
       if (existingRemovalType) {
         return ApiError.conflict(
-          `Only one birth control type can be designated for vaginal ring removal. "${existingRemovalType.name}" is already set for removal.`,
-          requestId
+          `Only one birth control type can be designated for vaginal ring removal. "${existingRemovalType.name}" is already set for removal.`
         )
       }
     }
@@ -128,16 +123,14 @@ export const POST = withApiLogging(async (request: NextRequest) => {
           userDbId: user?.id,
           validationError: error.issues,
         },
-        requestId,
       })
-      return ApiError.validation(error, requestId)
+      return ApiError.validation(error)
     }
 
     // Handle unique constraint violation (duplicate name)
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
       return ApiError.conflict(
-        `Birth control type "${validatedData?.name}" already exists. Please use a different name.`,
-        requestId
+        `Birth control type "${validatedData?.name}" already exists. Please use a different name.`
       )
     }
 
@@ -151,8 +144,7 @@ export const POST = withApiLogging(async (request: NextRequest) => {
         userDbId: user?.id,
         validatedData,
       },
-      requestId,
     })
-    return ApiError.internal('create birth control type', requestId)
+    return ApiError.internal('create birth control type')
   }
 })

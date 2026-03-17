@@ -1,10 +1,10 @@
-import { requireAuth } from '@/lib/auth-middleware'
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { ApiError } from '@/lib/api-response'
+import { requireAuth } from '@/lib/auth-middleware'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
 
 const createIrregularPhysicalDaySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
@@ -13,7 +13,6 @@ const createIrregularPhysicalDaySchema = z.object({
 })
 
 export const GET = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
 
@@ -65,14 +64,12 @@ export const GET = withApiLogging(async (request: NextRequest) => {
         userId,
         userDbId: user?.id,
       },
-      requestId,
     })
-    return ApiError.internal('fetch irregular physical days', requestId)
+    return ApiError.internal('fetch irregular physical days')
   }
 })
 
 export const POST = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
@@ -100,7 +97,7 @@ export const POST = withApiLogging(async (request: NextRequest) => {
     })
 
     if (!irregularPhysicalType) {
-      return ApiError.notFound('Irregular physical type', requestId)
+      return ApiError.notFound('Irregular physical type')
     }
 
     const irregularPhysicalDay = await prisma.irregularPhysicalDay.create({
@@ -128,16 +125,14 @@ export const POST = withApiLogging(async (request: NextRequest) => {
           userDbId: user?.id,
           validationError: error.issues,
         },
-        requestId,
       })
-      return ApiError.validation(error, requestId)
+      return ApiError.validation(error)
     }
 
     // Handle unique constraint violation (duplicate date + type for user)
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
       return ApiError.conflict(
-        `Irregular physical day for this date and type already exists. Please choose a different date or type.`,
-        requestId
+        `Irregular physical day for this date and type already exists. Please choose a different date or type.`
       )
     }
 
@@ -151,8 +146,7 @@ export const POST = withApiLogging(async (request: NextRequest) => {
         userDbId: user?.id,
         validatedData,
       },
-      requestId,
     })
-    return ApiError.internal('create irregular physical day', requestId)
+    return ApiError.internal('create irregular physical day')
   }
 })

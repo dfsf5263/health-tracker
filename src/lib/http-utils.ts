@@ -20,7 +20,6 @@ export interface ApiResponse<T = unknown> {
 export interface ApiErrorResponse {
   error: string
   details?: unknown
-  requestId?: string
   timestamp?: string
 }
 
@@ -30,15 +29,11 @@ export interface FetchOptions extends RequestInit {
 }
 
 /**
- * Formats an error toast with HTTP status code and request ID for better debugging
+ * Formats an error toast with HTTP status code for debugging
  */
-function formatErrorToast(status: number, message: string, requestId?: string): void {
-  const title = `Error ${status}: ${message}`
-  const description = requestId ? `Request ID: ${requestId}` : undefined
-
-  toast.error(title, {
-    description,
-    duration: 5000, // Show for 5 seconds to give users time to read request ID
+function formatErrorToast(status: number, message: string): void {
+  toast.error(`Error ${status}: ${message}`, {
+    duration: 5000,
   })
 }
 
@@ -81,7 +76,7 @@ export async function apiFetch<T = unknown>(
       const fullMessage = errorMessage + retryMessage
 
       if (showRateLimitToast) {
-        formatErrorToast(429, fullMessage, errorData.requestId)
+        formatErrorToast(429, fullMessage)
       }
 
       return {
@@ -120,7 +115,7 @@ export async function apiFetch<T = unknown>(
         errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`
 
       if (showErrorToast) {
-        formatErrorToast(response.status, errorMessage, errorData.requestId)
+        formatErrorToast(response.status, errorMessage)
       }
 
       return {

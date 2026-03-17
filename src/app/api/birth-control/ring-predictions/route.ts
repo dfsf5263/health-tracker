@@ -1,13 +1,12 @@
-import { requireAuth } from '@/lib/auth-middleware'
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { ApiError } from '@/lib/api-response'
+import { requireAuth } from '@/lib/auth-middleware'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
-import { predictNextRingEvent, BirthControlDayWithType } from '@/lib/ring-prediction'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
+import { BirthControlDayWithType, predictNextRingEvent } from '@/lib/ring-prediction'
 
 export const GET = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
 
@@ -31,7 +30,7 @@ export const GET = withApiLogging(async (request: NextRequest) => {
     })
 
     if (!userWithSettings) {
-      return ApiError.notFound('User', requestId)
+      return ApiError.notFound('User')
     }
 
     // Fetch birth control events with their types, filtered to ring events only
@@ -66,8 +65,7 @@ export const GET = withApiLogging(async (request: NextRequest) => {
         userDbId: user?.id,
       },
       operation: 'get birth control ring predictions',
-      requestId,
     })
-    return ApiError.internal('get birth control ring predictions', requestId)
+    return ApiError.internal('get birth control ring predictions')
   }
 })

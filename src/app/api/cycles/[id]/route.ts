@@ -1,13 +1,12 @@
-import { requireAuth } from '@/lib/auth-middleware'
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { ApiError } from '@/lib/api-response'
+import { requireAuth } from '@/lib/auth-middleware'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
 
 export const GET = withApiLogging(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const requestId = generateRequestId()
     let userId: string | null = null
     let user: { id: string } | null = null
     let id: string | null = null
@@ -32,7 +31,7 @@ export const GET = withApiLogging(
       })
 
       if (!cycle) {
-        return ApiError.notFound('Cycle', requestId)
+        return ApiError.notFound('Cycle')
       }
 
       return NextResponse.json(cycle)
@@ -46,9 +45,8 @@ export const GET = withApiLogging(
           cycleId: id,
         },
         operation: 'fetch cycle',
-        requestId,
       })
-      return ApiError.internal('fetch cycle', requestId)
+      return ApiError.internal('fetch cycle')
     }
   }
 )

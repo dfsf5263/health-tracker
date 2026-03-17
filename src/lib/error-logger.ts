@@ -6,26 +6,20 @@ interface LogApiErrorOptions {
   error: unknown
   context?: Record<string, unknown>
   operation?: string
-  requestId?: string
 }
 
-export async function logApiError({
-  request,
-  error,
-  context,
-  operation,
-  requestId,
-}: LogApiErrorOptions) {
+export async function logApiError({ request, error, context, operation }: LogApiErrorOptions) {
   try {
     const err = error instanceof Error ? error : new Error(String(error))
     const body = await getRequestBody(request)
+    const correlationId = request.headers.get('x-correlation-id')
     logger.error(
       {
         err,
         method: request.method,
         url: request.url,
         operation,
-        requestId,
+        correlationId,
         headers: sanitizeHeaders(Object.fromEntries(request.headers.entries())),
         ...(body !== null && { body: sanitizeRequestData(body) }),
         ...(context !== undefined && { context: sanitizeRequestData(context) }),

@@ -1,10 +1,10 @@
-import { requireAuth } from '@/lib/auth-middleware'
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { ApiError } from '@/lib/api-response'
+import { requireAuth } from '@/lib/auth-middleware'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
 
 const updateMigraineReliefTypeSchema = z.object({
   name: z
@@ -16,7 +16,6 @@ const updateMigraineReliefTypeSchema = z.object({
 
 export const PUT = withApiLogging(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const requestId = generateRequestId()
     let userId: string | null = null
     let user: { id: string } | null = null
     let body: unknown = null
@@ -48,7 +47,7 @@ export const PUT = withApiLogging(
       })
 
       if (!existingType) {
-        return ApiError.notFound('Migraine relief type', requestId)
+        return ApiError.notFound('Migraine relief type')
       }
 
       const updatedType = await prisma.migraineReliefType.update({
@@ -72,16 +71,14 @@ export const PUT = withApiLogging(
             userDbId: user?.id,
             validationError: error.issues,
           },
-          requestId,
         })
-        return ApiError.validation(error, requestId)
+        return ApiError.validation(error)
       }
 
       // Handle unique constraint violation (duplicate name)
       if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
         return ApiError.conflict(
-          `Migraine relief type "${validatedData?.name}" already exists. Please use a different name.`,
-          requestId
+          `Migraine relief type "${validatedData?.name}" already exists. Please use a different name.`
         )
       }
 
@@ -96,9 +93,8 @@ export const PUT = withApiLogging(
           userDbId: user?.id,
           validatedData,
         },
-        requestId,
       })
-      return ApiError.internal('update migraine relief type', requestId)
+      return ApiError.internal('update migraine relief type')
     }
   }
 )
@@ -107,7 +103,6 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let id: string | null = null
 
@@ -133,7 +128,7 @@ export async function DELETE(
     })
 
     if (!existingType) {
-      return ApiError.notFound('Migraine relief type', requestId)
+      return ApiError.notFound('Migraine relief type')
     }
 
     await prisma.migraineReliefType.delete({
@@ -150,8 +145,7 @@ export async function DELETE(
         typeId: id,
         userId,
       },
-      requestId,
     })
-    return ApiError.internal('delete migraine relief type', requestId)
+    return ApiError.internal('delete migraine relief type')
   }
 }

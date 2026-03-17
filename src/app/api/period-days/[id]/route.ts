@@ -1,12 +1,12 @@
-import { requireAuth } from '@/lib/auth-middleware'
+import { Color, Flow } from '@prisma/client'
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import { syncCycles } from '@/lib/sync-cycles'
-import { Flow, Color } from '@prisma/client'
+import { ApiError } from '@/lib/api-response'
+import { requireAuth } from '@/lib/auth-middleware'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
+import { syncCycles } from '@/lib/sync-cycles'
 
 const updatePeriodDaySchema = z.object({
   date: z
@@ -22,7 +22,6 @@ const updatePeriodDaySchema = z.object({
 
 export const PUT = withApiLogging(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const requestId = generateRequestId()
     let userId: string | null = null
     let user: { id: string } | null = null
     let body: unknown = null
@@ -58,7 +57,7 @@ export const PUT = withApiLogging(
       })
 
       if (!existingPeriodDay) {
-        return ApiError.notFound('Period day', requestId)
+        return ApiError.notFound('Period day')
       }
 
       const updateData: Record<string, unknown> = {}
@@ -104,9 +103,8 @@ export const PUT = withApiLogging(
             existingPeriodDay,
           },
           operation: 'validate period day update',
-          requestId,
         })
-        return ApiError.validation(error, requestId)
+        return ApiError.validation(error)
       }
 
       await logApiError({
@@ -120,9 +118,8 @@ export const PUT = withApiLogging(
           existingPeriodDay,
         },
         operation: 'update period day',
-        requestId,
       })
-      return ApiError.internal('update period day', requestId)
+      return ApiError.internal('update period day')
     }
   }
 )
@@ -131,7 +128,6 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let id: string | null = null
@@ -163,7 +159,7 @@ export async function DELETE(
     })
 
     if (!existingPeriodDay) {
-      return ApiError.notFound('Period day', requestId)
+      return ApiError.notFound('Period day')
     }
 
     await prisma.periodDay.delete({
@@ -184,8 +180,7 @@ export async function DELETE(
         existingPeriodDay,
       },
       operation: 'delete period day',
-      requestId,
     })
-    return ApiError.internal('delete period day', requestId)
+    return ApiError.internal('delete period day')
   }
 }

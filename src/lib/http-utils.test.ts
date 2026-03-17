@@ -92,7 +92,7 @@ describe('apiFetch', () => {
       ok: false,
       status: 500,
       statusText: 'Internal Server Error',
-      json: () => Promise.resolve({ error: 'Something went wrong', requestId: 'req-123' }),
+      json: () => Promise.resolve({ error: 'Something went wrong' }),
     })
 
     const { apiFetch } = await import('./http-utils')

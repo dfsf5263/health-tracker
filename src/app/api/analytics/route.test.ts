@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
-import { db } from '@/test/mocks/db'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockAuthContext } from '@/test/mocks/auth'
+import { db } from '@/test/mocks/db'
 
 vi.mock('@/lib/auth-middleware', () => ({
   requireAuth: vi.fn(),

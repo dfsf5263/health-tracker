@@ -1,11 +1,11 @@
-import { requireAuth } from '@/lib/auth-middleware'
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { z } from 'zod'
 import { PeriodStatus } from '@prisma/client'
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { ApiError } from '@/lib/api-response'
+import { requireAuth } from '@/lib/auth-middleware'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
 
 const createMigraineSchema = z.object({
   startDateTime: z.string().datetime(),
@@ -33,7 +33,6 @@ const createMigraineSchema = z.object({
 })
 
 export const GET = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
 
@@ -104,14 +103,12 @@ export const GET = withApiLogging(async (request: NextRequest) => {
         userDbId: user?.id,
       },
       operation: 'fetch migraines',
-      requestId,
     })
-    return ApiError.internal('fetch migraines', requestId)
+    return ApiError.internal('fetch migraines')
   }
 })
 
 export const POST = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
@@ -136,18 +133,15 @@ export const POST = withApiLogging(async (request: NextRequest) => {
 
     // Validate that end time is after start time if provided
     if (endDateTime && endDateTime <= startDateTime) {
-      return ApiError.validation(
-        {
-          issues: [
-            {
-              code: 'custom',
-              message: 'End date/time must be after start date/time',
-              path: ['endDateTime'],
-            },
-          ],
-        } as z.ZodError,
-        requestId
-      )
+      return ApiError.validation({
+        issues: [
+          {
+            code: 'custom',
+            message: 'End date/time must be after start date/time',
+            path: ['endDateTime'],
+          },
+        ],
+      } as z.ZodError)
     }
 
     // Use transaction to ensure all-or-nothing creation
@@ -261,9 +255,8 @@ export const POST = withApiLogging(async (request: NextRequest) => {
           userDbId: user?.id,
         },
         operation: 'validate migraine creation',
-        requestId,
       })
-      return ApiError.validation(error, requestId)
+      return ApiError.validation(error)
     }
 
     await logApiError({
@@ -275,8 +268,7 @@ export const POST = withApiLogging(async (request: NextRequest) => {
         userDbId: user?.id,
       },
       operation: 'create migraine',
-      requestId,
     })
-    return ApiError.internal('create migraine', requestId)
+    return ApiError.internal('create migraine')
   }
 })
