@@ -58,24 +58,18 @@
 - **Node.js** 24+ and npm
 - **PostgreSQL** 12+ (or use Docker)
 
-### Quick Start with Docker
+### Quick Start with Docker Compose
 
-The fastest way to run Health Tracker. Database migrations run automatically on startup.
+The fastest way to run Health Tracker. Includes PostgreSQL — no external database needed.
 
 ```bash
-docker run -d \
-  --name health-tracker \
-  -p 3000:3000 \
-  -e DATABASE_URL="postgresql://user:password@host:5432/health_db" \
-  -e BETTER_AUTH_SECRET="your-secret-key-32-characters-or-more" \
-  -e APP_URL="http://localhost:3000" \
-  -e RESEND_API_KEY="re_your_api_key" \
-  -e EMAIL_FROM_ADDRESS="noreply@yourdomain.com" \
-  --restart unless-stopped \
-  ghcr.io/dfsf5263/health-tracker:latest
+cp .env.docker .env
+# Edit .env with your secrets and email config
+
+docker compose up -d
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to use the app.
+Open [http://localhost:3000](http://localhost:3000) to use the app. Database migrations run automatically on first startup.
 
 > **Full deployment guide:** [Docker Deployment Guide](docs/DOCKER_DEPLOYMENT.md)
 
@@ -119,8 +113,8 @@ Open [http://localhost:3000](http://localhost:3000) to use the app.
 | `BETTER_AUTH_SECRET` | Yes | Session signing secret (32+ characters) |
 | `APP_URL` | Yes | Application URL for auth callbacks and emails |
 | `RESEND_API_KEY` | Yes | [Resend](https://resend.com) API key for transactional emails |
-| `EMAIL_FROM_ADDRESS` | Yes | Sender email address |
-| `EMAIL_REPLY_TO` | | Reply-to email for support |
+| `RESEND_FROM_EMAIL` | Yes | Sender email address |
+| `RESEND_REPLY_TO_EMAIL` | | Reply-to email for support |
 | `SKIP_MIGRATIONS` | | Set to `true` to skip auto-migration on Docker startup |
 | `ENABLE_SEEDING` | | Set to `true` to seed default event types on Docker startup |
 

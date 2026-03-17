@@ -31,13 +31,13 @@ docker pull ghcr.io/dfsf5263/health-tracker:latest
 | `BETTER_AUTH_SECRET` | Session signing secret (32+ characters) | `your-random-secret-32-chars-min` |
 | `APP_URL` | Public application URL | `https://health.example.com` |
 | `RESEND_API_KEY` | [Resend](https://resend.com) API key | `re_abc123...` |
-| `EMAIL_FROM_ADDRESS` | Sender email address | `noreply@yourdomain.com` |
+| `RESEND_FROM_EMAIL` | Sender email address | `noreply@yourdomain.com` |
 
 ### Optional Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `EMAIL_REPLY_TO` | | Reply-to address for support |
+| `RESEND_REPLY_TO_EMAIL` | | Reply-to address for support |
 | `NODE_ENV` | `production` | Node.js environment |
 | `PORT` | `3000` | Application port |
 | `LOG_LEVEL` | `info` | Application log level |
@@ -48,7 +48,54 @@ docker pull ghcr.io/dfsf5263/health-tracker:latest
 
 ## Quick Start
 
-### Basic Deployment
+### Docker Compose (Recommended)
+
+The easiest way to deploy. Includes PostgreSQL — no external database needed.
+
+```bash
+# Clone the repo (or just grab docker-compose.yml and .env.docker)
+cp .env.docker .env
+# Edit .env with your secrets and email config
+
+docker compose up -d
+```
+
+The app will be available at [http://localhost:3000](http://localhost:3000). Migrations run automatically on first startup.
+
+```bash
+# Check that both services are healthy
+docker compose ps
+
+# View logs
+docker compose logs -f app
+```
+
+#### Persistent Storage
+
+By default, PostgreSQL data is stored in a Docker named volume. **If you remove the volume (e.g., `docker compose down -v`), all data will be lost.**
+
+To store data at a known location on your host filesystem, replace the named volume with a bind mount in `docker-compose.yml`:
+
+```yaml
+services:
+  db:
+    volumes:
+      - /opt/health-tracker/pgdata:/var/lib/postgresql/data
+```
+
+And remove the top-level `volumes:` section:
+
+```yaml
+# Remove this:
+volumes:
+  postgres_data:
+```
+
+This makes backups simpler — just back up the host directory when the container is stopped.
+
+### Docker Run (Standalone)
+
+If you have an existing PostgreSQL instance, you can run the container directly:
 
 ```bash
 docker run -d \
@@ -58,7 +105,7 @@ docker run -d \
   -e BETTER_AUTH_SECRET="your-secret-key-32-characters-or-more" \
   -e APP_URL="http://localhost:3000" \
   -e RESEND_API_KEY="re_your_api_key" \
-  -e EMAIL_FROM_ADDRESS="noreply@yourdomain.com" \
+  -e RESEND_FROM_EMAIL="noreply@yourdomain.com" \
   --restart unless-stopped \
   ghcr.io/dfsf5263/health-tracker:latest
 ```
@@ -72,8 +119,8 @@ DATABASE_URL=postgresql://user:password@host:5432/health_db
 BETTER_AUTH_SECRET=your-secret-key-32-characters-or-more
 APP_URL=https://health.example.com
 RESEND_API_KEY=re_your_api_key
-EMAIL_FROM_ADDRESS=noreply@yourdomain.com
-EMAIL_REPLY_TO=support@yourdomain.com
+RESEND_FROM_EMAIL=noreply@yourdomain.com
+RESEND_REPLY_TO_EMAIL=support@yourdomain.com
 ```
 
 Deploy:
@@ -122,7 +169,11 @@ curl http://localhost:3000/api/health
 - **Encoding**: UTF-8
 - **Permissions**: The database user needs `CREATE`, `SELECT`, `INSERT`, `UPDATE`, `DELETE`
 
-### Initial Database Setup
+> **Using Docker Compose?** The included `docker-compose.yml` provisions PostgreSQL automatically — skip to [Migration Control](#migration-control).
+
+### Manual Database Setup
+
+If running the container standalone against an external database:
 
 ```sql
 CREATE DATABASE health_tracker;
@@ -191,6 +242,52 @@ docker run -d \
   --restart unless-stopped \
   ghcr.io/dfsf5263/health-tracker:latest
 ```
+
+#### Nginx Configuration Example
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name health.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/health.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/health.example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+
+        # Essential headers for proper operation
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_set_header svix-id $http_svix_id;
+        proxy_set_header svix-timestamp $http_svix_timestamp;
+        proxy_set_header svix-signature $http_svix_signature;
+        proxy_set_header X-Correlation-ID $request_id;
+
+        proxy_set_header Authorization $http_authorization;
+        proxy_pass_header Authorization;
+
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+
+        # Disable buffering for real-time features
+        proxy_buffering off;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+> **Note:** Set `APP_URL` to your public domain (e.g., `https://health.example.com`) so auth callbacks and email links resolve correctly.
 
 ## Building Locally
 
@@ -290,7 +387,7 @@ docker run -it --rm \
   /bin/sh
 
 # Check environment variables are set
-docker exec health-tracker env | grep -E "DATABASE_URL|BETTER_AUTH|RESEND|EMAIL"
+docker exec health-tracker env | grep -E "DATABASE_URL|BETTER_AUTH|RESEND"
 ```
 
 ## Security Considerations
@@ -336,7 +433,16 @@ docker run -d \
 
 ## Updates
 
-### Updating the Application
+### Updating with Docker Compose
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Migrations will run automatically on startup if the new version includes schema changes.
+
+### Updating with Docker Run
 
 ```bash
 # Pull the latest image
