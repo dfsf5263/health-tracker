@@ -1,5 +1,4 @@
-import { auth } from '@/lib/auth'
-import { headers } from 'next/headers'
+import { getSession } from '@/lib/auth-helpers'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
@@ -18,9 +17,7 @@ export interface AuthContext {
  * Returns the authenticated user context or an error response
  */
 export async function requireAuth(): Promise<AuthContext | NextResponse> {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  })
+  const session = await getSession()
 
   if (!session || !session.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

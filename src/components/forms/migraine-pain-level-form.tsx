@@ -29,6 +29,7 @@ export function MigrainePainLevelForm({ onContinue, onBack }: MigrainePainLevelF
   }
 
   const handleContinue = () => {
+    updateFormData({ painLevel })
     onContinue?.()
   }
 

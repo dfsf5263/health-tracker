@@ -2,79 +2,89 @@
 
 ## Overview
 
-This guide covers deploying the Health Tracker application using Docker. The application is containerized as a single Docker image that includes automatic database migrations and connects to an external PostgreSQL database.
+This guide covers deploying the Health Tracker application using Docker. The application is containerized as a single Docker image that connects to an external PostgreSQL database and automatically runs migrations on startup.
 
-## Docker Hub Registry
+## Container Registry
 
-The official Health Tracker Docker images are available at:
-- **Registry**: `dfsf5263/health-tracker`
-- **Tags**: `latest`, version tags (e.g., `v1.0.0`)
+Official images are published to **GitHub Container Registry (GHCR)**:
+
+- **Registry**: `ghcr.io/dfsf5263/health-tracker`
+- **Tags**: `latest`, `<version>` (from `package.json`), `sha-<commit>`, `main`
+- **Immutability**: Version tags (e.g., `0.1.0`) are immutable — once published, they cannot be overwritten
+
+```bash
+docker pull ghcr.io/dfsf5263/health-tracker:latest
+```
 
 ## Prerequisites
 
 ### Required Services
-- **PostgreSQL Database**: External PostgreSQL instance (version 12+)
-- **Docker**: Docker Engine 20.10+ or Docker Desktop
+
+- **PostgreSQL** 12+ (external instance)
+- **Docker Engine** 20.10+ or Docker Desktop
 
 ### Required Environment Variables
 
-```bash
-# Database Connection (Required)
-DATABASE_URL=postgresql://username:password@host:port/database_name
+| Variable | Description | Example |
+|---|---|---|
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/health_db` |
+| `BETTER_AUTH_SECRET` | Session signing secret (32+ characters) | `your-random-secret-32-chars-min` |
+| `APP_URL` | Public application URL | `https://health.example.com` |
+| `RESEND_API_KEY` | [Resend](https://resend.com) API key | `re_abc123...` |
+| `EMAIL_FROM_ADDRESS` | Sender email address | `noreply@yourdomain.com` |
 
-# Better Auth Configuration (Required)
-BETTER_AUTH_SECRET=your-secret-key-here
-BETTER_AUTH_URL=https://yourdomain.com
+### Optional Environment Variables
 
-# Email Service (Required for notifications)
-RESEND_API_KEY=re_your_resend_api_key
-EMAIL_FROM_ADDRESS=noreply@yourdomain.com
-EMAIL_REPLY_TO=support@yourdomain.com
-
-# Optional Configuration
-NODE_ENV=production
-PORT=3000
-SKIP_MIGRATIONS=false
-ENABLE_SEEDING=false
-```
+| Variable | Default | Description |
+|---|---|---|
+| `EMAIL_REPLY_TO` | | Reply-to address for support |
+| `NODE_ENV` | `production` | Node.js environment |
+| `PORT` | `3000` | Application port |
+| `LOG_LEVEL` | `info` | Application log level |
+| `SKIP_MIGRATIONS` | `false` | Skip automatic database migrations on startup |
+| `ENABLE_SEEDING` | `false` | Run database seeding on startup |
+| `DB_MIGRATION_MAX_RETRIES` | `10` | Maximum migration retry attempts (waiting for database) |
+| `DB_MIGRATION_RETRY_DELAY` | `5` | Seconds between migration retry attempts |
 
 ## Quick Start
 
-### 1. Basic Deployment
+### Basic Deployment
 
 ```bash
 docker run -d \
   --name health-tracker \
   -p 3000:3000 \
   -e DATABASE_URL="postgresql://user:password@host:5432/health_db" \
-  -e BETTER_AUTH_SECRET="your-secret-key" \
-  -e BETTER_AUTH_URL="https://yourdomain.com" \
-  -e RESEND_API_KEY="re_..." \
+  -e BETTER_AUTH_SECRET="your-secret-key-32-characters-or-more" \
+  -e APP_URL="http://localhost:3000" \
+  -e RESEND_API_KEY="re_your_api_key" \
   -e EMAIL_FROM_ADDRESS="noreply@yourdomain.com" \
   --restart unless-stopped \
-  dfsf5263/health-tracker:latest
+  ghcr.io/dfsf5263/health-tracker:latest
 ```
 
-### 2. Using Environment File
+### Using an Environment File
 
 Create `.env.production`:
+
 ```bash
 DATABASE_URL=postgresql://user:password@host:5432/health_db
-BETTER_AUTH_SECRET=your-secret-key
-BETTER_AUTH_URL=https://yourdomain.com
-RESEND_API_KEY=re_...
+BETTER_AUTH_SECRET=your-secret-key-32-characters-or-more
+APP_URL=https://health.example.com
+RESEND_API_KEY=re_your_api_key
 EMAIL_FROM_ADDRESS=noreply@yourdomain.com
-NODE_ENV=production
+EMAIL_REPLY_TO=support@yourdomain.com
 ```
 
-Deploy with environment file:
+Deploy:
+
 ```bash
 docker run -d \
   --name health-tracker \
   -p 3000:3000 \
   --env-file .env.production \
   --restart unless-stopped \
-  dfsf5263/health-tracker:latest
+  ghcr.io/dfsf5263/health-tracker:latest
 ```
 
 ## Container Lifecycle
@@ -83,30 +93,25 @@ docker run -d \
 
 The container performs the following steps on startup:
 
-1. **Environment Validation**: Checks required environment variables
-2. **Database Connectivity**: Waits for PostgreSQL to be available
-3. **Database Migration**: Runs `prisma migrate deploy` automatically
-4. **Prisma Client Generation**: Ensures latest schema is available
-5. **Health Check**: Validates database connection
-6. **Application Start**: Launches Next.js production server
+1. **Database Migration** — Runs `prisma migrate deploy` with automatic retry (up to 10 attempts, 5s apart). Skip with `SKIP_MIGRATIONS=true`.
+2. **Database Seeding** — Optionally seeds default event types (enable with `ENABLE_SEEDING=true`)
+3. **Cron Job** — Starts the birth control reminder scheduler in the background
+4. **Application Start** — Launches the Next.js production server
 
 ### Health Monitoring
 
-The container includes built-in health checks:
+The container includes a built-in health check:
 
-- **Health Endpoint**: `GET /api/health`
-- **Docker Health Check**: Runs every 30 seconds
-- **Startup Grace Period**: 60 seconds before health checks start
+- **Endpoint**: `GET /api/health`
+- **Docker Health Check**: Every 30 seconds
+- **Startup Grace Period**: 60 seconds
 
-Example health check response:
-```json
-{
-  "status": "healthy",
-  "timestamp": "2024-01-15T10:30:00.000Z",
-  "database": "connected",
-  "service": "health-tracker",
-  "version": "1.0.0"
-}
+```bash
+# Check health status
+docker inspect --format='{{.State.Health.Status}}' health-tracker
+
+# Call health endpoint directly
+curl http://localhost:3000/api/health
 ```
 
 ## Database Setup
@@ -114,266 +119,268 @@ Example health check response:
 ### PostgreSQL Requirements
 
 - **Version**: PostgreSQL 12 or higher
-- **Extensions**: None required (using standard SQL)
 - **Encoding**: UTF-8
-- **Permissions**: The database user needs:
-  - `CREATE` (for initial schema creation)
-  - `SELECT`, `INSERT`, `UPDATE`, `DELETE` (for application operations)
-
-### Database Migration
-
-Migrations are handled automatically by the container:
-
-- Runs `npx prisma migrate deploy` on startup
-- Creates tables and applies schema changes
-- Idempotent (safe to run multiple times)
-- Can be skipped with `SKIP_MIGRATIONS=true`
+- **Permissions**: The database user needs `CREATE`, `SELECT`, `INSERT`, `UPDATE`, `DELETE`
 
 ### Initial Database Setup
 
-1. Create PostgreSQL database:
 ```sql
-create database health_prod;
-create user health_user with encrypted password 'secure_password';
-grant all privileges on database health_prod to health_user;
-ALTER USER health_user CREATEDB;
-GRANT USAGE ON SCHEMA public TO health_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO health_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE ON SEQUENCES TO health_user;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO health_user;
-GRANT USAGE, CREATE ON SCHEMA public TO health_user;
+CREATE DATABASE health_tracker;
+CREATE USER health_user WITH PASSWORD 'secure_password';
+GRANT ALL PRIVILEGES ON DATABASE health_tracker TO health_user;
+ALTER USER health_user CREATEDB; -- Required for Prisma migrations
 ```
 
-2. The application will create all necessary tables on first startup.
+The container will create all necessary tables automatically on first startup via `prisma migrate deploy`.
+
+### Migration Control
+
+```bash
+# Normal startup (migrations run automatically with retry)
+docker run ... ghcr.io/dfsf5263/health-tracker:latest
+
+# Skip migrations (e.g., if you manage migrations separately)
+docker run ... -e SKIP_MIGRATIONS=true ghcr.io/dfsf5263/health-tracker:latest
+
+# Run with seeding (populates default event types)
+docker run ... -e ENABLE_SEEDING=true ghcr.io/dfsf5263/health-tracker:latest
+
+# Custom retry settings
+docker run ... -e DB_MIGRATION_MAX_RETRIES=20 -e DB_MIGRATION_RETRY_DELAY=10 ghcr.io/dfsf5263/health-tracker:latest
+```
 
 ## Production Deployment Examples
 
 ### Basic Production Setup
 
 ```bash
-# Pull latest image
-docker pull dfsf5263/health-tracker:latest
-
-# Run with production configuration
 docker run -d \
-  --name health-tracker-prod \
+  --name health-tracker \
   -p 3000:3000 \
-  -e DATABASE_URL="postgresql://health_user:secure_password@db.example.com:5432/health_tracker" \
-  -e BETTER_AUTH_SECRET="your-secret-key" \
-  -e BETTER_AUTH_URL="https://yourdomain.com" \
-  -e RESEND_API_KEY="re_your_key" \
-  -e EMAIL_FROM_ADDRESS="noreply@yourdomain.com" \
-  -e NODE_ENV=production \
+  --env-file .env.production \
   --restart unless-stopped \
   --memory=512m \
   --cpus=0.5 \
-  dfsf5263/health-tracker:latest
+  ghcr.io/dfsf5263/health-tracker:latest
 ```
 
 ### With Custom Network
 
 ```bash
-# Create network for database communication
+# Create a network for database communication
 docker network create health-network
 
-# Run application on custom network
+# Run on custom network
 docker run -d \
   --name health-tracker \
   --network health-network \
   -p 3000:3000 \
   --env-file .env.production \
   --restart unless-stopped \
-  dfsf5263/health-tracker:latest
+  ghcr.io/dfsf5263/health-tracker:latest
 ```
 
-### Behind Reverse Proxy
+### Behind a Reverse Proxy
 
 ```bash
-# Run without exposing port (behind nginx/traefik)
+# Run without exposing port directly (behind nginx/traefik)
 docker run -d \
   --name health-tracker \
   --network web \
   --env-file .env.production \
   --restart unless-stopped \
-  dfsf5263/health-tracker:latest
+  ghcr.io/dfsf5263/health-tracker:latest
 ```
 
-## Environment Configuration
+## Building Locally
 
-### Required Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/db` |
-| `BETTER_AUTH_SECRET` | Better Auth secret key | `your-secret-key` |
-| `BETTER_AUTH_URL` | Better Auth base URL | `https://yourdomain.com` |
-| `RESEND_API_KEY` | Resend email service API key | `re_...` |
-| `EMAIL_FROM_ADDRESS` | Email sender address | `noreply@yourdomain.com` |
-
-### Optional Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `NODE_ENV` | `production` | Node.js environment |
-| `PORT` | `3000` | Application port |
-| `SKIP_MIGRATIONS` | `false` | Skip database migrations |
-| `ENABLE_SEEDING` | `false` | Run database seeding |
-| `DB_WAIT_TIMEOUT` | `30` | Database wait timeout (seconds) |
-
-### Better Auth Configuration
-
-1. **Generate Secret**: Create a secure random string for `BETTER_AUTH_SECRET`
-2. **Set Base URL**: Configure `BETTER_AUTH_URL` to match your domain
-3. **Email Service**: Set up Resend account and configure API key
-4. **Create Application**: Set up your Health Tracker app
-3. **Configure URLs**:
-   - Sign-in URL: `/sign-in`
-   - Sign-up URL: `/sign-up`
-   - After sign-in: `/dashboard`
-   - After sign-up: `/dashboard`
-
-## Container Management
-
-### Logging
+Build your own Docker image from source:
 
 ```bash
-# View real-time logs
+# Build for linux/amd64 (default server architecture)
+docker build -t health-tracker:local .
+
+# Build for Apple Silicon / ARM
+docker build --platform linux/arm64 -t health-tracker:local .
+```
+
+Or use the convenience scripts:
+
+```bash
+# Build image
+./scripts/docker-build.sh
+
+# Build and push to a registry
+./scripts/docker-build.sh --push --version v1.0.0
+```
+
+## Monitoring and Logging
+
+### Container Logs
+
+```bash
+# Real-time logs
 docker logs -f health-tracker
 
-# View last 100 lines
+# Last 100 lines
 docker logs --tail 100 health-tracker
 
-# View logs with timestamps
+# Logs with timestamps
 docker logs -t health-tracker
-```
-
-### Health Checks
-
-```bash
-# Check container health status
-docker inspect --format='{{.State.Health.Status}}' health-tracker
-
-# Check via API endpoint
-curl http://localhost:3000/api/health
 ```
 
 ### Resource Monitoring
 
 ```bash
-# View resource usage
+# Real-time stats
 docker stats health-tracker
 
-# View container details
+# Container details
 docker inspect health-tracker
 ```
 
+## Backup and Recovery
+
 ### Database Backup
+
+The Health Tracker container is stateless — all data is stored in the external PostgreSQL database.
 
 ```bash
 # Create backup
-docker exec -i postgres_container pg_dump -U health_user health_tracker > backup.sql
+pg_dump -h host -U user health_tracker > backup.sql
 
-# Restore backup
-docker exec -i postgres_container psql -U health_user health_tracker < backup.sql
+# Restore from backup
+psql -h host -U user health_tracker < backup.sql
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### Database Connection Issues
+#### Database Connection Failed
 
 ```bash
-# Check database connectivity from container
-docker logs health-tracker | grep "DB-WAIT"
+# Check container logs for connection errors
+docker logs health-tracker | grep -i "error\|database\|prisma"
 
-# Test database connection manually
-docker run --rm --network your-network postgres:15 psql $DATABASE_URL -c "SELECT 1"
+# Verify DATABASE_URL format
+# Must be: postgresql://user:password@host:port/database
 ```
 
-#### Container Startup Issues
+#### Migration Errors
 
 ```bash
-# View startup logs
-docker logs health-tracker | grep "ENTRYPOINT"
+# Check migration output in logs
+docker logs health-tracker | head -30
 
-# Check environment variables
-docker exec health-tracker env
-
-# Test container startup manually
-docker run --rm dfsf5263/health-tracker:latest ./scripts/wait-for-db.sh
+# Skip migrations and debug manually
+docker run -it --rm \
+  --env-file .env.production \
+  ghcr.io/dfsf5263/health-tracker:latest \
+  /bin/sh
 ```
 
-#### Application Errors
+#### Container Won't Start
 
 ```bash
-# Check application logs
-docker logs health-tracker | grep "ERROR"
+# Run interactively to see errors
+docker run -it --rm \
+  --env-file .env.production \
+  ghcr.io/dfsf5263/health-tracker:latest \
+  /bin/sh
 
-# Run with debug mode
+# Check environment variables are set
+docker exec health-tracker env | grep -E "DATABASE_URL|BETTER_AUTH|RESEND|EMAIL"
+```
+
+## Security Considerations
+
+### Container Security
+
+- Runs as non-root user (`nextjs:nodejs`)
+- Minimal Alpine Linux base image
+- No unnecessary packages installed
+- Secrets provided at runtime only — never built into the image
+
+### Environment Security
+
+- Use `--env-file` instead of command-line `-e` flags to avoid secrets in shell history
+- Use SSL connections in `DATABASE_URL` for production (`?sslmode=require`)
+- Generate a strong random `BETTER_AUTH_SECRET` (32+ characters)
+- Restrict database access to the application container only
+
+### Network Security
+
+- Use custom Docker networks to isolate services
+- Run behind a reverse proxy with TLS termination
+- Use firewall rules to restrict container port access
+
+## Performance Tuning
+
+### Recommended Resource Limits
+
+```bash
 docker run -d \
-  --name health-tracker-debug \
-  -e DEBUG=* \
-  -e NODE_ENV=development \
-  dfsf5263/health-tracker:latest \
-  node server.js
+  --memory=512m \
+  --memory-swap=1g \
+  --cpus=0.5 \
+  --ulimit nofile=65536:65536 \
+  ...
 ```
 
-### Health Check Failures
+### Database Optimization
 
-If health checks are failing:
+- Use connection pooling in the `DATABASE_URL` (e.g., PgBouncer)
+- Configure appropriate PostgreSQL memory and connection settings
+- Run regular `VACUUM` and `ANALYZE` maintenance
 
-1. **Check Database**: Ensure PostgreSQL is accessible
-2. **Verify Environment**: Check all required variables are set
-3. **Network Issues**: Ensure container can reach database
-4. **Resource Limits**: Check if container has sufficient memory/CPU
+## Updates
 
-## Updates and Maintenance
-
-### Image Updates
+### Updating the Application
 
 ```bash
-# Pull latest image
-docker pull dfsf5263/health-tracker:latest
+# Pull the latest image
+docker pull ghcr.io/dfsf5263/health-tracker:latest
 
-# Stop and remove old container
+# Stop and remove the current container
 docker stop health-tracker
 docker rm health-tracker
 
-# Start with new image
+# Start with the new image
 docker run -d \
   --name health-tracker \
   -p 3000:3000 \
   --env-file .env.production \
   --restart unless-stopped \
-  dfsf5263/health-tracker:latest
+  ghcr.io/dfsf5263/health-tracker:latest
 ```
 
-### Zero-Downtime Updates
+Migrations will run automatically on startup if the new version includes schema changes.
 
-For production environments, consider using:
-- **Docker Compose** with rolling updates
-- **Kubernetes** deployments
-- **Load balancer** with multiple instances
-
-### Monitoring
+### Quick Restart
 
 ```bash
-# Check resource usage
-docker stats health-tracker --no-stream
-
-# Restart if needed
-docker restart health-tracker
-
-# Update and restart
-docker pull dfsf5263/health-tracker:latest && docker restart health-tracker
+docker pull ghcr.io/dfsf5263/health-tracker:latest && \
+  docker stop health-tracker && \
+  docker rm health-tracker && \
+  docker run -d \
+    --name health-tracker \
+    -p 3000:3000 \
+    --env-file .env.production \
+    --restart unless-stopped \
+    ghcr.io/dfsf5263/health-tracker:latest
 ```
 
-## Security Considerations
+## Useful Commands
 
-- Use non-root database users with minimal privileges
-- Secure database connections with SSL
-- Regularly update Docker images
-- Use secrets management for sensitive environment variables
-- Run containers with resource limits
+```bash
+# Quick health check
+curl -f http://localhost:3000/api/health && echo " Healthy" || echo " Unhealthy"
+
+# Resource usage snapshot
+docker stats health-tracker --no-stream
+
+# Restart container
+docker restart health-tracker
+```
 - Use private networks when possible

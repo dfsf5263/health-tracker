@@ -52,8 +52,11 @@ tsconfig.tsbuildinfo
 .next/trace/
 .*.env
 
+# Playwright
+playwright-report/
+test-results/
+tests/e2e/.auth/
+blob-report/
+
 #Misc
 .DS_Store
-# clerk configuration (can include secrets)
-/.clerk/
-(base) crowland@Chriss-MacBook-Pro finance-tracker % 

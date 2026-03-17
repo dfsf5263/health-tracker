@@ -5,90 +5,133 @@ import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { prepopulateUserTypes } from '@/lib/prepopulate-user-types'
 import { sendEmailVerification } from '@/lib/email-service'
+import logger from '@/lib/logger'
 
-const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
-})
+function createAuthInstance(options: {
+  appUrl: string
+  betterAuthSecret: string
+  databaseUrl: string
+  emailEnabled: boolean
+}) {
+  const adapter = new PrismaPg({ connectionString: options.databaseUrl })
+  const prisma = new PrismaClient({ adapter })
 
-export const auth = betterAuth({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL!,
-  basePath: '/api/auth',
-  secret: process.env.BETTER_AUTH_SECRET!,
-  trustedOrigins: ['https://health.crowland.us', 'http://localhost:3000'],
-  database: prismaAdapter(prisma, {
-    provider: 'postgresql',
-  }),
-  plugins: [
-    twoFactor({
-      issuer: 'Health Tracker',
+  return betterAuth({
+    baseURL: options.appUrl,
+    basePath: '/api/auth',
+    secret: options.betterAuthSecret,
+    trustedOrigins: [new URL(options.appUrl).origin],
+    database: prismaAdapter(prisma, {
+      provider: 'postgresql',
     }),
-  ],
-  emailAndPassword: {
-    enabled: true,
-    requireEmailVerification: true,
-    autoSignIn: false, // Don't auto sign in until email is verified
-  },
-  user: {
-    additionalFields: {
-      firstName: {
-        type: 'string',
-        required: true,
-      },
-      lastName: {
-        type: 'string',
-        required: true,
-      },
+    plugins: [
+      twoFactor({
+        issuer: 'Health Tracker',
+      }),
+    ],
+    emailAndPassword: {
+      enabled: true,
+      requireEmailVerification: options.emailEnabled,
+      autoSignIn: !options.emailEnabled,
     },
-  },
-  session: {
-    expiresIn: 60 * 60 * 24 * 7, // 7 days
-    updateAge: 60 * 60 * 24, // 1 day (update session if older than 1 day)
-  },
-  emailVerification: {
-    sendOnSignUp: true,
-    expiresIn: 60 * 60 * 24, // 24 hours
-    sendVerificationEmail: async ({ user, url }) => {
-      // Parse first name from the user's name field, or use a default
-      const firstName = user.name?.split(' ')[0] || 'there'
-
-      const result = await sendEmailVerification({
-        to: user.email,
-        firstName,
-        verificationUrl: url,
-      })
-
-      if (!result.success) {
-        console.error('Failed to send email verification:', result.error)
-        throw new Error(`Failed to send verification email: ${result.error}`)
-      }
-    },
-  },
-  advanced: {
-    crossSubDomainCookies: {
-      enabled: false,
-    },
-    useSecureCookies: process.env.NODE_ENV === 'production',
-    database: {
-      generateId: false, // Let PostgreSQL generate UUIDs automatically
-    },
-  },
-  databaseHooks: {
     user: {
-      create: {
-        after: async (user) => {
-          try {
-            console.log(`Running type prepopulation for new user: ${user.id}`)
-            await prepopulateUserTypes(user.id)
-            console.log(`Successfully completed type prepopulation for user: ${user.id}`)
-          } catch (error) {
-            // Log error but don't throw - user creation succeeded
-            console.error(`Failed to prepopulate user types for user ${user.id}:`, error)
-          }
+      additionalFields: {
+        firstName: {
+          type: 'string',
+          required: true,
+        },
+        lastName: {
+          type: 'string',
+          required: true,
         },
       },
     },
-  },
-})
+    session: {
+      expiresIn: 60 * 60 * 24 * 7, // 7 days
+      updateAge: 60 * 60 * 24, // 1 day (update session if older than 1 day)
+    },
+    emailVerification: {
+      sendOnSignUp: options.emailEnabled,
+      expiresIn: 60 * 60 * 24, // 24 hours
+      sendVerificationEmail: async ({ user, url }) => {
+        // Parse first name from the user's name field, or use a default
+        const firstName = user.name?.split(' ')[0] || 'there'
 
-export type Session = typeof auth.$Infer.Session
-export type User = typeof auth.$Infer.Session.user
+        const result = await sendEmailVerification({
+          to: user.email,
+          firstName,
+          verificationUrl: url,
+        })
+
+        if (!result.success) {
+          console.error('Failed to send email verification:', result.error)
+          throw new Error(`Failed to send verification email: ${result.error}`)
+        }
+      },
+    },
+    advanced: {
+      crossSubDomainCookies: {
+        enabled: false,
+      },
+      useSecureCookies: process.env.NODE_ENV === 'production',
+      database: {
+        generateId: false, // Let PostgreSQL generate UUIDs automatically
+      },
+    },
+    databaseHooks: {
+      user: {
+        create: {
+          after: async (user) => {
+            try {
+              console.log(`Running type prepopulation for new user: ${user.id}`)
+              await prepopulateUserTypes(user.id)
+              console.log(`Successfully completed type prepopulation for user: ${user.id}`)
+            } catch (error) {
+              // Log error but don't throw - user creation succeeded
+              console.error(`Failed to prepopulate user types for user ${user.id}:`, error)
+            }
+          },
+        },
+      },
+    },
+  })
+}
+
+let authInstance: ReturnType<typeof createAuthInstance> | null = null
+
+function requireEnv(name: string): string {
+  const value = process.env[name]
+  if (!value) {
+    throw new Error(`${name} environment variable is required`)
+  }
+  return value
+}
+
+export function getAuth(): ReturnType<typeof createAuthInstance> {
+  if (authInstance) {
+    return authInstance
+  }
+
+  const appUrl = requireEnv('APP_URL')
+  const betterAuthSecret = requireEnv('BETTER_AUTH_SECRET')
+  const databaseUrl = requireEnv('DATABASE_URL')
+  const emailEnabled = !!process.env.RESEND_API_KEY
+
+  logger.info(
+    { appUrl, trustedOrigins: [new URL(appUrl).origin], emailEnabled },
+    'Initializing Better Auth'
+  )
+
+  authInstance = createAuthInstance({
+    appUrl,
+    betterAuthSecret,
+    databaseUrl,
+    emailEnabled,
+  })
+
+  return authInstance
+}
+
+export type AuthInstance = ReturnType<typeof createAuthInstance>
+export type Session = AuthInstance['$Infer']['Session']
+export type User = AuthInstance['$Infer']['Session']['user']

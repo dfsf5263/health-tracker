@@ -9,7 +9,7 @@ type LogLevel = 'debug' | 'info'
 export function withApiLogging(handler: RouteHandler, logLevel: LogLevel = 'info'): RouteHandler {
   return async (request, context) => {
     const start = Date.now()
-    const correlationId = randomUUID()
+    const correlationId = request.headers.get('x-correlation-id')
     const reqLog = { correlationId, method: request.method, url: request.url }
 
     logger[logLevel](reqLog, 'api request')

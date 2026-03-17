@@ -148,7 +148,7 @@ export async function apiFetch<T = unknown>(
     return {
       data: null,
       error: errorMessage,
-      response: new Response(null, { status: 0 }),
+      response: new Response(null, { status: 502 }),
       errorData: undefined,
     }
   }
