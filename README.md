@@ -1,7 +1,7 @@
 <h1 align="center">Health Tracker</h1>
 
 <p align="center">
-  A modern, full-stack health application for tracking and predicting menstrual cycles, managing birth control, and logging migraines.
+  A self-hosted health application for tracking and predicting menstrual cycles, managing birth control, and logging migraines. Own your health data.
 </p>
 
 <p align="center">
@@ -23,6 +23,12 @@
   <img src="https://img.shields.io/badge/Vitest-4-6E9F18?style=for-the-badge&logo=vitest&logoColor=white" alt="Vitest" />
   <img src="https://img.shields.io/badge/Playwright-1.58-2EAD33?style=for-the-badge&logo=playwright&logoColor=white" alt="Playwright" />
 </p>
+
+## Why Self-Host?
+
+Health data is deeply personal. Health Tracker is designed to run on your own hardware — a home server, a VPS, or anywhere you choose — so your cycle history, migraine logs, and health patterns never leave your control. No third-party accounts, no data harvesting, no subscriptions. Just a Docker image you can deploy in minutes.
+
+> **See also:** [Finance Tracker](https://github.com/dfsf5263/finance-tracker) — a companion self-hosted app for tracking personal finances with the same privacy-first approach.
 
 ## Features
 
@@ -167,7 +173,7 @@ The project uses GitHub Actions with two workflows:
 
 **Release** (`release.yml`) — Runs on push to `main` and version tags (`v*`):
 
-- Builds the Docker image and pushes to [GitHub Container Registry](https://github.com/dfsf5263/health-tracker/pkgs/container/health-tracker)
+- Builds multi-arch Docker images (amd64 + arm64) and pushes to [GitHub Container Registry](https://github.com/dfsf5263/health-tracker/pkgs/container/health-tracker)
 - Tags: `latest`, `<version>` (from `package.json`), `sha-<commit>`, `main`
 - Version tags are **immutable** — the build fails if the version already exists in GHCR
 
@@ -199,7 +205,7 @@ tests/
 
 ### Docker (Self-Hosted)
 
-Official images are published to GitHub Container Registry:
+Multi-arch images (amd64 + arm64) are published to GitHub Container Registry:
 
 ```bash
 docker pull ghcr.io/dfsf5263/health-tracker:latest
@@ -207,7 +213,7 @@ docker pull ghcr.io/dfsf5263/health-tracker:latest
 
 The container automatically runs database migrations on startup (skip with `SKIP_MIGRATIONS=true`).
 
-See the [Docker Deployment Guide](docs/DOCKER_DEPLOYMENT.md) for production examples, reverse proxy setup, monitoring, backups, and troubleshooting.
+See the [Docker Deployment Guide](docs/DOCKER_DEPLOYMENT.md) for Docker Compose quick deploy, reverse proxy setup, monitoring, backups, and troubleshooting.
 
 ## Development Commands
 
