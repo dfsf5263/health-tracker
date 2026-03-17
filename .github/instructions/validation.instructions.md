@@ -62,10 +62,10 @@ try {
   // validatedData is fully typed
 } catch (error) {
   if (error instanceof z.ZodError) {
-    return ApiError.validation(error, requestId)
+    return ApiError.validation(error)
   }
   throw error
 }
 ```
 
-Use `ApiError.validation(zodError, requestId)` from `@/lib/api-response` for consistent error responses.
+Use `ApiError.validation(zodError)` from `@/lib/api-response` for consistent error responses.

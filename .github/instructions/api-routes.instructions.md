@@ -59,4 +59,4 @@ export const GET = withApiLogging(async (request: NextRequest) => {
 - `ApiError.validation(zodError)` — 400
 - `ApiError.conflict(message)` — 409
 - `ApiError.internal(operation)` — 500
-- `ApiError.serviceUnavailable(service, details?)` — 503
+- `ApiError.serviceUnavailable(message, details?)` — 503

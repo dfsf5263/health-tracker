@@ -18,7 +18,7 @@ export const POST = withApiLogging(async (request: NextRequest) => {
         context: {},
         operation: 'verify cron secret',
       })
-      return ApiError.internal('Cron secret not configured')
+      return ApiError.internal('read cron configuration')
     }
 
     if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
@@ -116,8 +116,8 @@ export const POST = withApiLogging(async (request: NextRequest) => {
       request,
       error,
       context: {},
-      operation: 'birth control reminder cron job',
+      operation: 'run birth control reminder cron job',
     })
-    return ApiError.internal('birth control reminder cron job')
+    return ApiError.internal('run birth control reminder cron job')
   }
 })
