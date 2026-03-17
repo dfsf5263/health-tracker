@@ -9,8 +9,9 @@ This guide covers deploying the Health Tracker application using Docker. The app
 Official images are published to **GitHub Container Registry (GHCR)**:
 
 - **Registry**: `ghcr.io/dfsf5263/health-tracker`
-- **Tags**: `latest`, `<version>` (from `package.json`), `sha-<commit>`, `main`
-- **Immutability**: Version tags (e.g., `0.1.0`) are immutable — once published, they cannot be overwritten
+- **Stable tags**: `:latest`, `:<version>` (e.g., `0.2.0`), `:sha-<commit>` — published on version tag pushes
+- **Nightly tags**: `:nightly`, `:nightly-YYYYMMDD`, `:nightly-sha-<commit>` — published on every push to `main`
+- **Immutability**: Version tags (e.g., `0.2.0`) are immutable — once published, they cannot be overwritten
 
 ```bash
 docker pull ghcr.io/dfsf5263/health-tracker:latest

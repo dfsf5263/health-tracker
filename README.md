@@ -6,6 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/dfsf5263/health-tracker/actions/workflows/ci.yml"><img src="https://github.com/dfsf5263/health-tracker/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/dfsf5263/health-tracker/actions/workflows/codeql.yml"><img src="https://github.com/dfsf5263/health-tracker/actions/workflows/codeql.yml/badge.svg" alt="CodeQL" /></a>
   <a href="https://github.com/dfsf5263/health-tracker/blob/main/LICENSE"><img src="https://img.shields.io/github/license/dfsf5263/health-tracker" alt="License" /></a>
   <a href="https://github.com/dfsf5263/health-tracker/pkgs/container/health-tracker"><img src="https://img.shields.io/badge/GHCR-image-blue?logo=github" alt="GHCR" /></a>
 </p>
@@ -209,11 +210,13 @@ The project uses GitHub Actions with two workflows:
 2. **Unit Tests** — `npm run test` (runs in parallel with step 1)
 3. **E2E Tests** — Playwright against a PostgreSQL service container (runs after steps 1 & 2 pass)
 
-**Release** (`release.yml`) — Runs on push to `main` and version tags (`v*`):
+**Release** (`release.yml`) — Builds multi-arch Docker images (amd64 + arm64) and pushes to [GitHub Container Registry](https://github.com/dfsf5263/health-tracker/pkgs/container/health-tracker):
 
-- Builds multi-arch Docker images (amd64 + arm64) and pushes to [GitHub Container Registry](https://github.com/dfsf5263/health-tracker/pkgs/container/health-tracker)
-- Tags: `latest`, `<version>` (from `package.json`), `sha-<commit>`, `main`
+- **Push to `main`** → nightly build: `:nightly`, `:nightly-YYYYMMDD`, `:nightly-sha-<commit>`
+- **Tag push (`v*`)** → stable release: `:latest`, `:<version>`, `:sha-<commit>` + GitHub Release with auto-generated notes
 - Version tags are **immutable** — the build fails if the version already exists in GHCR
+
+See [Releasing](docs/RELEASING.md) for the full release process.
 
 ## Project Structure
 
