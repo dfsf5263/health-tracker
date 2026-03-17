@@ -38,13 +38,13 @@ export async function sendBirthControlReminder({
   reminderType,
 }: BirthControlReminderOptions): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!process.env.EMAIL_FROM_ADDRESS) {
-      throw new Error('EMAIL_FROM_ADDRESS environment variable is not configured')
+    if (!process.env.RESEND_FROM_EMAIL) {
+      throw new Error('RESEND_FROM_EMAIL environment variable is not configured')
     }
 
     const resend = getResendClient() // Lazy initialization
-    const fromAddress = process.env.EMAIL_FROM_ADDRESS
-    const replyToAddress = process.env.EMAIL_REPLY_TO || process.env.EMAIL_FROM_ADDRESS
+    const fromAddress = process.env.RESEND_FROM_EMAIL
+    const replyToAddress = process.env.RESEND_REPLY_TO_EMAIL || process.env.RESEND_FROM_EMAIL
 
     const subject =
       reminderType === 'insertion'
@@ -88,13 +88,13 @@ export async function sendEmailVerification({
   verificationUrl,
 }: EmailVerificationOptions): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!process.env.EMAIL_FROM_ADDRESS) {
-      throw new Error('EMAIL_FROM_ADDRESS environment variable is not configured')
+    if (!process.env.RESEND_FROM_EMAIL) {
+      throw new Error('RESEND_FROM_EMAIL environment variable is not configured')
     }
 
     const resend = getResendClient() // Lazy initialization
-    const fromAddress = process.env.EMAIL_FROM_ADDRESS
-    const replyToAddress = process.env.EMAIL_REPLY_TO || process.env.EMAIL_FROM_ADDRESS
+    const fromAddress = process.env.RESEND_FROM_EMAIL
+    const replyToAddress = process.env.RESEND_REPLY_TO_EMAIL || process.env.RESEND_FROM_EMAIL
 
     const { data, error } = await resend.emails.send({
       from: fromAddress,

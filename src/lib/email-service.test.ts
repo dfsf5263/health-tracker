@@ -24,7 +24,7 @@ describe('sendBirthControlReminder', () => {
     process.env = {
       ...originalEnv,
       RESEND_API_KEY: 'test-api-key',
-      EMAIL_FROM_ADDRESS: 'noreply@example.com',
+      RESEND_FROM_EMAIL: 'noreply@example.com',
     }
     vi.spyOn(console, 'log').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -87,8 +87,8 @@ describe('sendBirthControlReminder', () => {
     expect(result.error).toContain('Rate limited')
   })
 
-  it('returns error when EMAIL_FROM_ADDRESS is not set', async () => {
-    delete process.env.EMAIL_FROM_ADDRESS
+  it('returns error when RESEND_FROM_EMAIL is not set', async () => {
+    delete process.env.RESEND_FROM_EMAIL
 
     const { sendBirthControlReminder } = await import('./email-service')
     const result = await sendBirthControlReminder({
@@ -98,7 +98,7 @@ describe('sendBirthControlReminder', () => {
     })
 
     expect(result.success).toBe(false)
-    expect(result.error).toContain('EMAIL_FROM_ADDRESS')
+    expect(result.error).toContain('RESEND_FROM_EMAIL')
   })
 })
 
@@ -110,7 +110,7 @@ describe('sendEmailVerification', () => {
     process.env = {
       ...originalEnv,
       RESEND_API_KEY: 'test-api-key',
-      EMAIL_FROM_ADDRESS: 'noreply@example.com',
+      RESEND_FROM_EMAIL: 'noreply@example.com',
     }
     vi.spyOn(console, 'log').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
