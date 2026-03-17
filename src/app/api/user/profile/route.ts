@@ -1,10 +1,10 @@
-import { requireAuth } from '@/lib/auth-middleware'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { prisma } from '@/lib/prisma'
+import { ApiError } from '@/lib/api-response'
+import { requireAuth } from '@/lib/auth-middleware'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
 
 const updateProfileSchema = z.object({
   firstName: z.string().trim().min(1, 'First name is required').optional(),
@@ -14,7 +14,6 @@ const updateProfileSchema = z.object({
 })
 
 export const GET = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
 
@@ -41,7 +40,7 @@ export const GET = withApiLogging(async (request: NextRequest) => {
     })
 
     if (!userProfile) {
-      return ApiError.notFound('User', requestId)
+      return ApiError.notFound('User')
     }
 
     return NextResponse.json({
@@ -61,14 +60,12 @@ export const GET = withApiLogging(async (request: NextRequest) => {
         userDbId: user?.id,
       },
       operation: 'get user profile',
-      requestId,
     })
-    return ApiError.internal('get user profile', requestId)
+    return ApiError.internal('get user profile')
   }
 })
 
 export const PUT = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
@@ -96,9 +93,8 @@ export const PUT = withApiLogging(async (request: NextRequest) => {
           requestBody: body,
         },
         operation: 'update user profile validation',
-        requestId,
       })
-      return ApiError.validation(validationResult.error, requestId)
+      return ApiError.validation(validationResult.error)
     }
 
     const { firstName, lastName, daysWithoutBirthControlRing, daysWithBirthControlRing } =
@@ -171,8 +167,7 @@ export const PUT = withApiLogging(async (request: NextRequest) => {
         requestBody: body,
       },
       operation: 'update user profile',
-      requestId,
     })
-    return ApiError.internal('update user profile', requestId)
+    return ApiError.internal('update user profile')
   }
 })

@@ -1,11 +1,13 @@
 <h1 align="center">Health Tracker</h1>
 
 <p align="center">
-  A modern, full-stack health application for tracking and predicting menstrual cycles, managing birth control, and logging migraines.
+  A self-hosted health application for tracking and predicting menstrual cycles, managing birth control, and logging migraines. Own your health data.
 </p>
 
 <p align="center">
   <a href="https://github.com/dfsf5263/health-tracker/actions/workflows/ci.yml"><img src="https://github.com/dfsf5263/health-tracker/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/dfsf5263/health-tracker/actions/workflows/codeql.yml"><img src="https://github.com/dfsf5263/health-tracker/actions/workflows/codeql.yml/badge.svg" alt="CodeQL" /></a>
+  <a href="https://codecov.io/gh/dfsf5263/health-tracker"><img src="https://codecov.io/gh/dfsf5263/health-tracker/branch/main/graph/badge.svg" alt="Coverage" /></a>
   <a href="https://github.com/dfsf5263/health-tracker/blob/main/LICENSE"><img src="https://img.shields.io/github/license/dfsf5263/health-tracker" alt="License" /></a>
   <a href="https://github.com/dfsf5263/health-tracker/pkgs/container/health-tracker"><img src="https://img.shields.io/badge/GHCR-image-blue?logo=github" alt="GHCR" /></a>
 </p>
@@ -23,6 +25,50 @@
   <img src="https://img.shields.io/badge/Vitest-4-6E9F18?style=for-the-badge&logo=vitest&logoColor=white" alt="Vitest" />
   <img src="https://img.shields.io/badge/Playwright-1.58-2EAD33?style=for-the-badge&logo=playwright&logoColor=white" alt="Playwright" />
 </p>
+
+<p align="center">
+  <picture>
+    <img src="screenshots/dashboard.png" alt="Health Tracker Dashboard" width="800" />
+  </picture>
+</p>
+
+<details>
+<summary><strong>📸 Screenshots</strong></summary>
+
+<br />
+
+<table>
+  <tr>
+    <td align="center"><strong>Cycle Tracking</strong></td>
+    <td align="center"><strong>Add Event</strong></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/cycle_tracking.png" alt="Cycle Tracking" width="400" /></td>
+    <td><img src="screenshots/add_event.png" alt="Add Event" width="400" /></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Add Period Event</strong></td>
+    <td align="center"><strong>Add Birth Control Event</strong></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/add_event_period.png" alt="Add Period Event" width="400" /></td>
+    <td><img src="screenshots/add_event_birth_control.png" alt="Add Birth Control Event" width="400" /></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><strong>Add Migraine Event</strong></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="screenshots/add_event_migraine.gif" alt="Add Migraine Event" width="400" /></td>
+  </tr>
+</table>
+
+</details>
+
+## Why Self-Host?
+
+Health data is deeply personal. Health Tracker is designed to run on your own hardware — a home server, a VPS, or anywhere you choose — so your cycle history, migraine logs, and health patterns never leave your control. No third-party accounts, no data harvesting, no subscriptions. Just a Docker image you can deploy in minutes.
+
+> **See also:** [Finance Tracker](https://github.com/dfsf5263/finance-tracker) — a companion self-hosted app for tracking personal finances with the same privacy-first approach.
 
 ## Features
 
@@ -112,8 +158,8 @@ Open [http://localhost:3000](http://localhost:3000) to use the app. Database mig
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
 | `BETTER_AUTH_SECRET` | Yes | Session signing secret (32+ characters) |
 | `APP_URL` | Yes | Application URL for auth callbacks and emails |
-| `RESEND_API_KEY` | Yes | [Resend](https://resend.com) API key for transactional emails |
-| `RESEND_FROM_EMAIL` | Yes | Sender email address |
+| `RESEND_API_KEY` | | [Resend](https://resend.com) API key — required for email notifications |
+| `RESEND_FROM_EMAIL` | | Sender email address — required when `RESEND_API_KEY` is set |
 | `RESEND_REPLY_TO_EMAIL` | | Reply-to email for support |
 | `SKIP_MIGRATIONS` | | Set to `true` to skip auto-migration on Docker startup |
 | `ENABLE_SEEDING` | | Set to `true` to seed default event types on Docker startup |
@@ -165,11 +211,13 @@ The project uses GitHub Actions with two workflows:
 2. **Unit Tests** — `npm run test` (runs in parallel with step 1)
 3. **E2E Tests** — Playwright against a PostgreSQL service container (runs after steps 1 & 2 pass)
 
-**Release** (`release.yml`) — Runs on push to `main` and version tags (`v*`):
+**Release** (`release.yml`) — Builds multi-arch Docker images (amd64 + arm64) and pushes to [GitHub Container Registry](https://github.com/dfsf5263/health-tracker/pkgs/container/health-tracker):
 
-- Builds the Docker image and pushes to [GitHub Container Registry](https://github.com/dfsf5263/health-tracker/pkgs/container/health-tracker)
-- Tags: `latest`, `<version>` (from `package.json`), `sha-<commit>`, `main`
+- **Push to `main`** → nightly build: `:nightly`, `:nightly-YYYYMMDD`, `:nightly-sha-<commit>`
+- **Tag push (`v*`)** → stable release: `:latest`, `:<version>`, `:sha-<commit>` + GitHub Release with auto-generated notes
 - Version tags are **immutable** — the build fails if the version already exists in GHCR
+
+See [Releasing](docs/RELEASING.md) for the full release process.
 
 ## Project Structure
 
@@ -199,7 +247,7 @@ tests/
 
 ### Docker (Self-Hosted)
 
-Official images are published to GitHub Container Registry:
+Multi-arch images (amd64 + arm64) are published to GitHub Container Registry:
 
 ```bash
 docker pull ghcr.io/dfsf5263/health-tracker:latest
@@ -207,7 +255,7 @@ docker pull ghcr.io/dfsf5263/health-tracker:latest
 
 The container automatically runs database migrations on startup (skip with `SKIP_MIGRATIONS=true`).
 
-See the [Docker Deployment Guide](docs/DOCKER_DEPLOYMENT.md) for production examples, reverse proxy setup, monitoring, backups, and troubleshooting.
+See the [Docker Deployment Guide](docs/DOCKER_DEPLOYMENT.md) for Docker Compose quick deploy, reverse proxy setup, monitoring, backups, and troubleshooting.
 
 ## Development Commands
 

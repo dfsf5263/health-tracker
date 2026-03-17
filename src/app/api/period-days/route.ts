@@ -1,12 +1,12 @@
-import { requireAuth } from '@/lib/auth-middleware'
+import { Color, Flow } from '@prisma/client'
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import { syncCycles } from '@/lib/sync-cycles'
-import { Flow, Color } from '@prisma/client'
+import { ApiError } from '@/lib/api-response'
+import { requireAuth } from '@/lib/auth-middleware'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
+import { syncCycles } from '@/lib/sync-cycles'
 
 const createPeriodDaySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
@@ -18,7 +18,6 @@ const createPeriodDaySchema = z.object({
 })
 
 export const GET = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
 
@@ -47,14 +46,12 @@ export const GET = withApiLogging(async (request: NextRequest) => {
         userDbId: user?.id,
       },
       operation: 'fetch period days',
-      requestId,
     })
-    return ApiError.internal('fetch period days', requestId)
+    return ApiError.internal('fetch period days')
   }
 })
 
 export const POST = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
@@ -102,9 +99,8 @@ export const POST = withApiLogging(async (request: NextRequest) => {
           userDbId: user?.id,
         },
         operation: 'validate period day creation',
-        requestId,
       })
-      return ApiError.validation(error, requestId)
+      return ApiError.validation(error)
     }
 
     // Handle unique constraint violation (duplicate period day)
@@ -133,12 +129,10 @@ export const POST = withApiLogging(async (request: NextRequest) => {
           formattedDate,
         },
         operation: 'create period day (duplicate)',
-        requestId,
       })
 
       return ApiError.conflict(
-        `Period day already exists for ${formattedDate}. Please modify the existing period day.`,
-        requestId
+        `Period day already exists for ${formattedDate}. Please modify the existing period day.`
       )
     }
 
@@ -151,8 +145,7 @@ export const POST = withApiLogging(async (request: NextRequest) => {
         userDbId: user?.id,
       },
       operation: 'create period day',
-      requestId,
     })
-    return ApiError.internal('create period day', requestId)
+    return ApiError.internal('create period day')
   }
 })

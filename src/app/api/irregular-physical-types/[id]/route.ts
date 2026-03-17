@@ -1,10 +1,10 @@
-import { requireAuth } from '@/lib/auth-middleware'
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { ApiError } from '@/lib/api-response'
+import { requireAuth } from '@/lib/auth-middleware'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
 
 const updateIrregularPhysicalTypeSchema = z.object({
   name: z
@@ -17,7 +17,6 @@ const updateIrregularPhysicalTypeSchema = z.object({
 
 export const GET = withApiLogging(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const requestId = generateRequestId()
     let userId: string | null = null
     let user: { id: string } | null = null
     let id: string | null = null
@@ -42,7 +41,7 @@ export const GET = withApiLogging(
       })
 
       if (!irregularPhysicalType) {
-        return ApiError.notFound('Irregular physical type', requestId)
+        return ApiError.notFound('Irregular physical type')
       }
 
       return NextResponse.json(irregularPhysicalType)
@@ -56,16 +55,14 @@ export const GET = withApiLogging(
           userId,
           userDbId: user?.id,
         },
-        requestId,
       })
-      return ApiError.internal('fetch irregular physical type', requestId)
+      return ApiError.internal('fetch irregular physical type')
     }
   }
 )
 
 export const PUT = withApiLogging(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const requestId = generateRequestId()
     let userId: string | null = null
     let user: { id: string } | null = null
     let body: unknown = null
@@ -100,7 +97,7 @@ export const PUT = withApiLogging(
       })
 
       if (!existingIrregularPhysicalType) {
-        return ApiError.notFound('Irregular physical type', requestId)
+        return ApiError.notFound('Irregular physical type')
       }
 
       const updateData: Record<string, unknown> = {}
@@ -128,16 +125,14 @@ export const PUT = withApiLogging(
             validationError: error.issues,
             existingIrregularPhysicalType,
           },
-          requestId,
         })
-        return ApiError.validation(error, requestId)
+        return ApiError.validation(error)
       }
 
       // Handle unique constraint violation (duplicate name)
       if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
         return ApiError.conflict(
-          `Irregular physical type "${validatedData?.name}" already exists. Please use a different name.`,
-          requestId
+          `Irregular physical type "${validatedData?.name}" already exists. Please use a different name.`
         )
       }
 
@@ -153,9 +148,8 @@ export const PUT = withApiLogging(
           validatedData,
           existingIrregularPhysicalType,
         },
-        requestId,
       })
-      return ApiError.internal('update irregular physical type', requestId)
+      return ApiError.internal('update irregular physical type')
     }
   }
 )
@@ -164,7 +158,6 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let id: string | null = null
@@ -194,7 +187,7 @@ export async function DELETE(
     })
 
     if (!existingIrregularPhysicalType) {
-      return ApiError.notFound('Irregular physical type', requestId)
+      return ApiError.notFound('Irregular physical type')
     }
 
     // Check if there are any irregular physical days using this type
@@ -204,8 +197,7 @@ export async function DELETE(
 
     if (irregularPhysicalDaysCount > 0) {
       return ApiError.conflict(
-        `Cannot delete irregular physical type "${existingIrregularPhysicalType.name}" because it is being used in ${irregularPhysicalDaysCount} irregular physical day${irregularPhysicalDaysCount === 1 ? '' : 's'}.`,
-        requestId
+        `Cannot delete irregular physical type "${existingIrregularPhysicalType.name}" because it is being used in ${irregularPhysicalDaysCount} irregular physical day${irregularPhysicalDaysCount === 1 ? '' : 's'}.`
       )
     }
 
@@ -225,8 +217,7 @@ export async function DELETE(
         userDbId: user?.id,
         existingIrregularPhysicalType,
       },
-      requestId,
     })
-    return ApiError.internal('delete irregular physical type', requestId)
+    return ApiError.internal('delete irregular physical type')
   }
 }

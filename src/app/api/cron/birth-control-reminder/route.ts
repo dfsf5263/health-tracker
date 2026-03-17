@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
-import { processReminderUsers, getCurrentTimeWindow } from '@/lib/birth-control-reminders'
+import { ApiError } from '@/lib/api-response'
+import { getCurrentTimeWindow, processReminderUsers } from '@/lib/birth-control-reminders'
 import { sendBirthControlReminder } from '@/lib/email-service'
+import { logApiError } from '@/lib/error-logger'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
 
 export const POST = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
-
   try {
     // Verify the request is from the cron job
     const authHeader = request.headers.get('authorization')
@@ -19,9 +17,8 @@ export const POST = withApiLogging(async (request: NextRequest) => {
         error: new Error('CRON_SECRET environment variable is not set'),
         context: {},
         operation: 'verify cron secret',
-        requestId,
       })
-      return ApiError.internal('Cron secret not configured', requestId)
+      return ApiError.internal('read cron configuration')
     }
 
     if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
@@ -32,14 +29,13 @@ export const POST = withApiLogging(async (request: NextRequest) => {
           hasAuthHeader: !!authHeader,
         },
         operation: 'authorize cron job',
-        requestId,
       })
-      return ApiError.unauthorized(requestId)
+      return ApiError.unauthorized()
     }
 
     const now = new Date()
     console.log(
-      `[DEBUG] Birth control reminder cron job triggered at: ${now.toLocaleString()} (local time) - Request ID: ${requestId}`
+      `[DEBUG] Birth control reminder cron job triggered at: ${now.toLocaleString()} (local time)`
     )
 
     const currentWindow = getCurrentTimeWindow()
@@ -104,7 +100,7 @@ export const POST = withApiLogging(async (request: NextRequest) => {
       failed,
     }
 
-    console.log(`Birth control reminder cron job completed - Request ID: ${requestId}`)
+    console.log('Birth control reminder cron job completed')
     console.log(`- Total users checked: ${results.total}`)
     console.log(`- Reminders sent: ${results.successful}`)
     console.log(`- Failed: ${results.failed}`)
@@ -120,9 +116,8 @@ export const POST = withApiLogging(async (request: NextRequest) => {
       request,
       error,
       context: {},
-      operation: 'birth control reminder cron job',
-      requestId,
+      operation: 'run birth control reminder cron job',
     })
-    return ApiError.internal('birth control reminder cron job', requestId)
+    return ApiError.internal('run birth control reminder cron job')
   }
 })

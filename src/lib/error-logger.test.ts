@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
-import { logApiError } from './error-logger'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import logger from '@/lib/logger'
+import { logApiError } from './error-logger'
 
 describe('logApiError', () => {
   beforeEach(() => {
@@ -17,7 +17,6 @@ describe('logApiError', () => {
       request,
       error: new Error('Test error'),
       operation: 'fetch data',
-      requestId: 'req-123',
     })
 
     expect(logger.error).toHaveBeenCalled()
@@ -27,7 +26,44 @@ describe('logApiError', () => {
     expect(logData.method).toBe('GET')
     expect(logData.url).toContain('/api/test')
     expect(logData.operation).toBe('fetch data')
-    expect(logData.requestId).toBe('req-123')
+  })
+
+  it('extracts correlationId from x-correlation-id header', async () => {
+    const request = new NextRequest('http://localhost:3000/api/test', {
+      method: 'GET',
+      headers: {
+        'x-correlation-id': 'abc-123-def',
+      },
+    })
+
+    await logApiError({
+      request,
+      error: new Error('Test error'),
+      operation: 'fetch data',
+    })
+
+    expect(logger.error).toHaveBeenCalled()
+    const callArgs = vi.mocked(logger.error).mock.calls[0]
+    const logData = callArgs[0] as Record<string, unknown>
+
+    expect(logData.correlationId).toBe('abc-123-def')
+  })
+
+  it('logs null correlationId when header is absent', async () => {
+    const request = new NextRequest('http://localhost:3000/api/test', {
+      method: 'GET',
+    })
+
+    await logApiError({
+      request,
+      error: new Error('Test error'),
+    })
+
+    expect(logger.error).toHaveBeenCalled()
+    const callArgs = vi.mocked(logger.error).mock.calls[0]
+    const logData = callArgs[0] as Record<string, unknown>
+
+    expect(logData.correlationId).toBeNull()
   })
 
   it('sanitizes sensitive headers', async () => {

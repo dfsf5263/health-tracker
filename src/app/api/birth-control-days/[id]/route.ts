@@ -1,10 +1,10 @@
-import { requireAuth } from '@/lib/auth-middleware'
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { ApiError } from '@/lib/api-response'
+import { requireAuth } from '@/lib/auth-middleware'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
 
 const updateBirthControlDaySchema = z.object({
   date: z
@@ -17,7 +17,6 @@ const updateBirthControlDaySchema = z.object({
 
 export const GET = withApiLogging(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const requestId = generateRequestId()
     let userId: string | null = null
     let user: { id: string } | null = null
     let id: string | null = null
@@ -45,7 +44,7 @@ export const GET = withApiLogging(
       })
 
       if (!birthControlDay) {
-        return ApiError.notFound('Birth control day', requestId)
+        return ApiError.notFound('Birth control day')
       }
 
       return NextResponse.json(birthControlDay)
@@ -59,16 +58,14 @@ export const GET = withApiLogging(
           birthControlDayId: id,
         },
         operation: 'fetch birth control day',
-        requestId,
       })
-      return ApiError.internal('fetch birth control day', requestId)
+      return ApiError.internal('fetch birth control day')
     }
   }
 )
 
 export const PUT = withApiLogging(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const requestId = generateRequestId()
     let userId: string | null = null
     let user: { id: string } | null = null
     let body: unknown = null
@@ -104,7 +101,7 @@ export const PUT = withApiLogging(
       })
 
       if (!existingBirthControlDay) {
-        return ApiError.notFound('Birth control day', requestId)
+        return ApiError.notFound('Birth control day')
       }
 
       // If typeId is being updated, verify the new type belongs to the user
@@ -117,7 +114,7 @@ export const PUT = withApiLogging(
         })
 
         if (!birthControlType) {
-          return ApiError.notFound('Birth control type', requestId)
+          return ApiError.notFound('Birth control type')
         }
       }
 
@@ -154,9 +151,8 @@ export const PUT = withApiLogging(
             existingBirthControlDay,
           },
           operation: 'validate birth control day update',
-          requestId,
         })
-        return ApiError.validation(error, requestId)
+        return ApiError.validation(error)
       }
 
       // Handle unique constraint violation (duplicate date + type for user)
@@ -172,11 +168,9 @@ export const PUT = withApiLogging(
             existingBirthControlDay,
           },
           operation: 'update birth control day (duplicate)',
-          requestId,
         })
         return ApiError.conflict(
-          'Birth control day for this date and type already exists. Please choose a different date or type.',
-          requestId
+          'Birth control day for this date and type already exists. Please choose a different date or type.'
         )
       }
 
@@ -191,9 +185,8 @@ export const PUT = withApiLogging(
           existingBirthControlDay,
         },
         operation: 'update birth control day',
-        requestId,
       })
-      return ApiError.internal('update birth control day', requestId)
+      return ApiError.internal('update birth control day')
     }
   }
 )
@@ -202,7 +195,6 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let id: string | null = null
@@ -234,7 +226,7 @@ export async function DELETE(
     })
 
     if (!existingBirthControlDay) {
-      return ApiError.notFound('Birth control day', requestId)
+      return ApiError.notFound('Birth control day')
     }
 
     await prisma.birthControlDay.delete({
@@ -253,8 +245,7 @@ export async function DELETE(
         existingBirthControlDay,
       },
       operation: 'delete birth control day',
-      requestId,
     })
-    return ApiError.internal('delete birth control day', requestId)
+    return ApiError.internal('delete birth control day')
   }
 }

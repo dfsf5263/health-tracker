@@ -1,10 +1,10 @@
-import { requireAuth } from '@/lib/auth-middleware'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { prisma } from '@/lib/prisma'
+import { ApiError } from '@/lib/api-response'
+import { requireAuth } from '@/lib/auth-middleware'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
 
 const updateSettingsSchema = z.object({
   birthControlEmailNotifications: z.boolean().optional(),
@@ -19,7 +19,6 @@ const updateSettingsSchema = z.object({
 })
 
 export const GET = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
 
@@ -43,7 +42,7 @@ export const GET = withApiLogging(async (request: NextRequest) => {
     })
 
     if (!userSettings) {
-      return ApiError.notFound('User', requestId)
+      return ApiError.notFound('User')
     }
 
     return NextResponse.json({
@@ -67,14 +66,12 @@ export const GET = withApiLogging(async (request: NextRequest) => {
         userDbId: user?.id,
       },
       operation: 'get user settings',
-      requestId,
     })
-    return ApiError.internal('get user settings', requestId)
+    return ApiError.internal('get user settings')
   }
 })
 
 export const PUT = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
@@ -102,9 +99,8 @@ export const PUT = withApiLogging(async (request: NextRequest) => {
           requestBody: body,
         },
         operation: 'update user settings validation',
-        requestId,
       })
-      return ApiError.validation(validationResult.error, requestId)
+      return ApiError.validation(validationResult.error)
     }
 
     const { birthControlEmailNotifications, ringInsertionReminderTime, ringRemovalReminderTime } =
@@ -158,8 +154,7 @@ export const PUT = withApiLogging(async (request: NextRequest) => {
         requestBody: body,
       },
       operation: 'update user settings',
-      requestId,
     })
-    return ApiError.internal('update user settings', requestId)
+    return ApiError.internal('update user settings')
   }
 })

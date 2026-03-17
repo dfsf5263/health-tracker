@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { ApiError } from '@/lib/api-response'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
 
 export const GET = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
-
   try {
     const migraineLocationTypes = await prisma.migraineLocationType.findMany({
       orderBy: { name: 'asc' },
@@ -18,8 +16,7 @@ export const GET = withApiLogging(async (request: NextRequest) => {
       request,
       error,
       operation: 'fetching migraine location types',
-      requestId,
     })
-    return ApiError.internal('fetch migraine location types', requestId)
+    return ApiError.internal('fetch migraine location types')
   }
 })

@@ -1,11 +1,11 @@
-import { requireAuth } from '@/lib/auth-middleware'
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { z } from 'zod'
 import { PeriodStatus } from '@prisma/client'
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { ApiError } from '@/lib/api-response'
+import { requireAuth } from '@/lib/auth-middleware'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
 
 const updateMigraineSchema = z.object({
   startDateTime: z.string().datetime().optional(),
@@ -34,7 +34,6 @@ const updateMigraineSchema = z.object({
 
 export const GET = withApiLogging(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const requestId = generateRequestId()
     let userId: string | null = null
     let user: { id: string } | null = null
     let id: string | null = null
@@ -102,7 +101,7 @@ export const GET = withApiLogging(
       })
 
       if (!migraine) {
-        return ApiError.notFound('Migraine', requestId)
+        return ApiError.notFound('Migraine')
       }
 
       return NextResponse.json(migraine)
@@ -116,16 +115,14 @@ export const GET = withApiLogging(
           migraineId: id,
         },
         operation: 'fetch migraine',
-        requestId,
       })
-      return ApiError.internal('fetch migraine', requestId)
+      return ApiError.internal('fetch migraine')
     }
   }
 )
 
 export const PUT = withApiLogging(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const requestId = generateRequestId()
     let userId: string | null = null
     let user: { id: string } | null = null
     let id: string | null = null
@@ -154,7 +151,7 @@ export const PUT = withApiLogging(
       })
 
       if (!existingMigraine) {
-        return ApiError.notFound('Migraine', requestId)
+        return ApiError.notFound('Migraine')
       }
 
       body = await request.json()
@@ -170,18 +167,15 @@ export const PUT = withApiLogging(
 
       // Validate that end time is after start time if both provided
       if (startDateTime && endDateTime && endDateTime <= startDateTime) {
-        return ApiError.validation(
-          {
-            issues: [
-              {
-                code: 'custom',
-                message: 'End date/time must be after start date/time',
-                path: ['endDateTime'],
-              },
-            ],
-          } as z.ZodError,
-          requestId
-        )
+        return ApiError.validation({
+          issues: [
+            {
+              code: 'custom',
+              message: 'End date/time must be after start date/time',
+              path: ['endDateTime'],
+            },
+          ],
+        } as z.ZodError)
       }
 
       // Use transaction to ensure all-or-nothing update
@@ -371,9 +365,8 @@ export const PUT = withApiLogging(
             migraineId: id,
           },
           operation: 'validate migraine update',
-          requestId,
         })
-        return ApiError.validation(error, requestId)
+        return ApiError.validation(error)
       }
 
       await logApiError({
@@ -386,9 +379,8 @@ export const PUT = withApiLogging(
           migraineId: id,
         },
         operation: 'update migraine',
-        requestId,
       })
-      return ApiError.internal('update migraine', requestId)
+      return ApiError.internal('update migraine')
     }
   }
 )
@@ -397,7 +389,6 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let id: string | null = null
@@ -424,7 +415,7 @@ export async function DELETE(
     })
 
     if (!existingMigraine) {
-      return ApiError.notFound('Migraine', requestId)
+      return ApiError.notFound('Migraine')
     }
 
     await prisma.migraine.delete({
@@ -442,8 +433,7 @@ export async function DELETE(
         migraineId: id,
       },
       operation: 'delete migraine',
-      requestId,
     })
-    return ApiError.internal('delete migraine', requestId)
+    return ApiError.internal('delete migraine')
   }
 }

@@ -1,14 +1,13 @@
-import { requireAuth } from '@/lib/auth-middleware'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { prisma } from '@/lib/prisma'
-import { predictCycles, PredictionModel, PredictionResult } from '@/lib/cycle-prediction'
+import { ApiError } from '@/lib/api-response'
+import { requireAuth } from '@/lib/auth-middleware'
+import { PredictionModel, PredictionResult, predictCycles } from '@/lib/cycle-prediction'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
 
 export const GET = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
 
@@ -29,34 +28,28 @@ export const GET = withApiLogging(async (request: NextRequest) => {
 
     // Validate parameters
     if (count < 1 || count > 12) {
-      return ApiError.validation(
-        {
-          issues: [
-            {
-              code: 'custom',
-              message: 'Count must be between 1 and 12',
-              path: ['count'],
-            },
-          ],
-        } as z.ZodError,
-        requestId
-      )
+      return ApiError.validation({
+        issues: [
+          {
+            code: 'custom',
+            message: 'Count must be between 1 and 12',
+            path: ['count'],
+          },
+        ],
+      } as z.ZodError)
     }
 
     const validModels: PredictionModel[] = ['simple_average', 'weighted_average']
     if (!validModels.includes(model)) {
-      return ApiError.validation(
-        {
-          issues: [
-            {
-              code: 'custom',
-              message: `Invalid model. Must be one of: ${validModels.join(', ')}`,
-              path: ['model'],
-            },
-          ],
-        } as z.ZodError,
-        requestId
-      )
+      return ApiError.validation({
+        issues: [
+          {
+            code: 'custom',
+            message: `Invalid model. Must be one of: ${validModels.join(', ')}`,
+            path: ['model'],
+          },
+        ],
+      } as z.ZodError)
     }
 
     // Fetch user's cycles
@@ -66,7 +59,7 @@ export const GET = withApiLogging(async (request: NextRequest) => {
     })
 
     if (cycles.length === 0) {
-      return ApiError.notFound('Cycle data', requestId)
+      return ApiError.notFound('Cycle data')
     }
 
     try {
@@ -86,20 +79,16 @@ export const GET = withApiLogging(async (request: NextRequest) => {
           model,
           cycleCount: cycles.length,
         },
-        requestId,
       })
-      return ApiError.validation(
-        {
-          issues: [
-            {
-              code: 'custom',
-              message: errorMessage,
-              path: ['prediction'],
-            },
-          ],
-        } as z.ZodError,
-        requestId
-      )
+      return ApiError.validation({
+        issues: [
+          {
+            code: 'custom',
+            message: errorMessage,
+            path: ['prediction'],
+          },
+        ],
+      } as z.ZodError)
     }
   } catch (error) {
     await logApiError({
@@ -110,8 +99,7 @@ export const GET = withApiLogging(async (request: NextRequest) => {
         userId,
         userDbId: user?.id,
       },
-      requestId,
     })
-    return ApiError.internal('generate predictions', requestId)
+    return ApiError.internal('generate predictions')
   }
 })

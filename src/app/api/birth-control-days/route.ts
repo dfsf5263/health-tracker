@@ -1,10 +1,10 @@
-import { requireAuth } from '@/lib/auth-middleware'
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { ApiError } from '@/lib/api-response'
+import { requireAuth } from '@/lib/auth-middleware'
 import { logApiError } from '@/lib/error-logger'
-import { ApiError, generateRequestId } from '@/lib/api-response'
 import { withApiLogging } from '@/lib/middleware/with-api-logging'
+import { prisma } from '@/lib/prisma'
 
 const createBirthControlDaySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
@@ -13,7 +13,6 @@ const createBirthControlDaySchema = z.object({
 })
 
 export const GET = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
 
@@ -65,14 +64,12 @@ export const GET = withApiLogging(async (request: NextRequest) => {
         userDbId: user?.id,
       },
       operation: 'fetch birth control days',
-      requestId,
     })
-    return ApiError.internal('fetch birth control days', requestId)
+    return ApiError.internal('fetch birth control days')
   }
 })
 
 export const POST = withApiLogging(async (request: NextRequest) => {
-  const requestId = generateRequestId()
   let userId: string | null = null
   let user: { id: string } | null = null
   let body: unknown = null
@@ -100,7 +97,7 @@ export const POST = withApiLogging(async (request: NextRequest) => {
     })
 
     if (!birthControlType) {
-      return ApiError.notFound('Birth control type', requestId)
+      return ApiError.notFound('Birth control type')
     }
 
     const birthControlDay = await prisma.birthControlDay.create({
@@ -127,9 +124,8 @@ export const POST = withApiLogging(async (request: NextRequest) => {
           userDbId: user?.id,
         },
         operation: 'validate birth control day creation',
-        requestId,
       })
-      return ApiError.validation(error, requestId)
+      return ApiError.validation(error)
     }
 
     // Handle unique constraint violation (duplicate date + type for user)
@@ -143,11 +139,9 @@ export const POST = withApiLogging(async (request: NextRequest) => {
           userDbId: user?.id,
         },
         operation: 'create birth control day (duplicate)',
-        requestId,
       })
       return ApiError.conflict(
-        'Birth control day for this date and type already exists. Please choose a different date or type.',
-        requestId
+        'Birth control day for this date and type already exists. Please choose a different date or type.'
       )
     }
 
@@ -160,8 +154,7 @@ export const POST = withApiLogging(async (request: NextRequest) => {
         userDbId: user?.id,
       },
       operation: 'create birth control day',
-      requestId,
     })
-    return ApiError.internal('create birth control day', requestId)
+    return ApiError.internal('create birth control day')
   }
 })

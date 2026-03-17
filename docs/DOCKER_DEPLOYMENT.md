@@ -9,8 +9,9 @@ This guide covers deploying the Health Tracker application using Docker. The app
 Official images are published to **GitHub Container Registry (GHCR)**:
 
 - **Registry**: `ghcr.io/dfsf5263/health-tracker`
-- **Tags**: `latest`, `<version>` (from `package.json`), `sha-<commit>`, `main`
-- **Immutability**: Version tags (e.g., `0.1.0`) are immutable — once published, they cannot be overwritten
+- **Stable tags**: `:latest`, `:<version>` (e.g., `0.2.0`), `:sha-<commit>` — published on version tag pushes
+- **Nightly tags**: `:nightly`, `:nightly-YYYYMMDD`, `:nightly-sha-<commit>` — published on every push to `main`
+- **Immutability**: Version tags (e.g., `0.2.0`) are immutable — once published, they cannot be overwritten
 
 ```bash
 docker pull ghcr.io/dfsf5263/health-tracker:latest
@@ -30,13 +31,13 @@ docker pull ghcr.io/dfsf5263/health-tracker:latest
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/health_db` |
 | `BETTER_AUTH_SECRET` | Session signing secret (32+ characters) | `your-random-secret-32-chars-min` |
 | `APP_URL` | Public application URL | `https://health.example.com` |
-| `RESEND_API_KEY` | [Resend](https://resend.com) API key | `re_abc123...` |
-| `RESEND_FROM_EMAIL` | Sender email address | `noreply@yourdomain.com` |
 
 ### Optional Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
+| `RESEND_API_KEY` | | [Resend](https://resend.com) API key — required for email notifications |
+| `RESEND_FROM_EMAIL` | | Sender email address — required when `RESEND_API_KEY` is set |
 | `RESEND_REPLY_TO_EMAIL` | | Reply-to address for support |
 | `NODE_ENV` | `production` | Node.js environment |
 | `PORT` | `3000` | Application port |
@@ -104,8 +105,6 @@ docker run -d \
   -e DATABASE_URL="postgresql://user:password@host:5432/health_db" \
   -e BETTER_AUTH_SECRET="your-secret-key-32-characters-or-more" \
   -e APP_URL="http://localhost:3000" \
-  -e RESEND_API_KEY="re_your_api_key" \
-  -e RESEND_FROM_EMAIL="noreply@yourdomain.com" \
   --restart unless-stopped \
   ghcr.io/dfsf5263/health-tracker:latest
 ```
@@ -118,9 +117,11 @@ Create `.env.production`:
 DATABASE_URL=postgresql://user:password@host:5432/health_db
 BETTER_AUTH_SECRET=your-secret-key-32-characters-or-more
 APP_URL=https://health.example.com
-RESEND_API_KEY=re_your_api_key
-RESEND_FROM_EMAIL=noreply@yourdomain.com
-RESEND_REPLY_TO_EMAIL=support@yourdomain.com
+
+# Optional: enable email notifications (birth control reminders, email verification)
+# RESEND_API_KEY=re_your_api_key
+# RESEND_FROM_EMAIL=noreply@yourdomain.com
+# RESEND_REPLY_TO_EMAIL=support@yourdomain.com
 ```
 
 Deploy:
