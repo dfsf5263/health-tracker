@@ -1,0 +1,122 @@
+Birth Control Type
+    - Put in Contraceptive Ring
+    - Took out Contraceptive Ring
+Irregular Physical Type
+    - Breast Tenderness
+    - Cramps
+    - Mood Swings
+    - Diarrhea
+    - Constipation
+    - Sleep Dysregulation
+Regular Physical Type
+    - Sex
+    - Exercise
+Migraine Attack Type
+    - Migraine
+    - Tension Type Headache
+    - Cluster Headache
+    - Postdrome
+    - Headache
+Migraine Symptom Type
+    - Pounding Pain
+    - Pulsating Pain
+    - Throbbing Pain
+    - Worse Pain if Moving
+    - Nausea
+    - Vomiting
+    - Sensitivity to Light
+    - Sensitivity to Noise
+    - Neck Pain
+    - Giddiness
+    - Nasal Congestion
+    - Insomnia
+    - Depressed Mood
+    - Anxiety
+    - Sensitivity to Smell
+    - Heat
+    - Ringing in Ears
+    - Fatigue
+    - Blurred Vision
+    - Moody
+    - Diarrhea
+    - Confusion
+    - Lightheaded
+    - My Voice Hurts
+    - Dizzy
+    - Ear Pain
+Migraine Trigger Type
+    - Stress
+    - Lack of Sleep
+    - Interrupted Sleep
+    - Anxiety
+    - Missed Meal
+    - Variable Weather
+    - High Humidity
+    - Neck Pain
+    - Alcohol
+    - Sun Exposure/Dehydration
+    - Caffeine
+    - Allergy Reaction
+    - Odor/Strong Smell
+    - Rebound Headache
+    - Sinus
+    - Chocolate
+    - Skipped Magnesium
+Migraine Precognition Type
+    - No
+    - Weakness
+    - Fatigue/Achiness
+    - Visual Disturbance
+    - Tingling in Head
+    - Tingling in Neck
+    - Tingling near Eyes
+    - Frequent Yawning
+    - Muscle Stiffness
+    - Irritability
+    - Headache
+    - Aura
+    - Prodrome Only
+    - Unusually Energetic
+    - Unusually Depressed
+    - Confusion
+Migraine Medication Type
+    - No
+    - Zomig 5mg
+    - Relpax 20mg
+    - Maxalt 5mg
+    - Paracetamol 500mg
+    - Topiramate 25mg
+    - Ibuprofen 200mg
+    - Sumatriptan 0.1ml
+    - Tylenol 200mg
+    - Flonase
+    - Zyrtec
+    - Decongestant
+    - Nurtec 75mg
+    - Naratriptan 2.5mg
+Migraine Relief Type
+    - Darkroom Rest
+    - Sleep
+    - Yoga/Meditate
+    - Stay Indoor
+    - Icepack
+    - Food
+    - Caffeine
+    - Hot Shower
+    - Cold Shower
+    - Drink Water
+    - Heatpad
+    - Weighted Eye Mask
+    - Medicine
+    - Massage
+Migraine Activity Type
+    - Not Affected
+    - Missed Work
+    - Slower at Work
+    - Missed Social Activity
+    - Slower at Home
+    - Missed Family Time
+    - Could Not Fall Asleep
+    - Woke Up During Sleep
+    - No Screen/Phone
+    - Hard to Concentrate
