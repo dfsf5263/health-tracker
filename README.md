@@ -118,8 +118,8 @@ Open [http://localhost:3000](http://localhost:3000) to use the app. Database mig
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
 | `BETTER_AUTH_SECRET` | Yes | Session signing secret (32+ characters) |
 | `APP_URL` | Yes | Application URL for auth callbacks and emails |
-| `RESEND_API_KEY` | Yes | [Resend](https://resend.com) API key for transactional emails |
-| `RESEND_FROM_EMAIL` | Yes | Sender email address |
+| `RESEND_API_KEY` | | [Resend](https://resend.com) API key — required for email notifications |
+| `RESEND_FROM_EMAIL` | | Sender email address — required when `RESEND_API_KEY` is set |
 | `RESEND_REPLY_TO_EMAIL` | | Reply-to email for support |
 | `SKIP_MIGRATIONS` | | Set to `true` to skip auto-migration on Docker startup |
 | `ENABLE_SEEDING` | | Set to `true` to seed default event types on Docker startup |
