@@ -36,7 +36,7 @@ docker pull ghcr.io/dfsf5263/health-tracker:latest
 
 | Variable | Default | Description |
 |---|---|---|
-| `RESEND_API_KEY` | | [Resend](https://resend.com) API key — required for email notifications | 
+| `RESEND_API_KEY` | | [Resend](https://resend.com) API key — required for email notifications |
 | `RESEND_FROM_EMAIL` | | Sender email address — required when `RESEND_API_KEY` is set |
 | `RESEND_REPLY_TO_EMAIL` | | Reply-to address for support |
 | `NODE_ENV` | `production` | Node.js environment |
