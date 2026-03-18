@@ -1,3 +1,4 @@
+import { Sex } from '@prisma/client'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { ApiError } from '@/lib/api-response'
@@ -9,6 +10,12 @@ import { prisma } from '@/lib/prisma'
 const updateProfileSchema = z.object({
   firstName: z.string().trim().min(1, 'First name is required').optional(),
   lastName: z.string().trim().min(1, 'Last name is required').optional(),
+  sex: z
+    .nativeEnum(Sex)
+    .refine((v) => v === 'Male' || v === 'Female', {
+      message: 'Sex must be Male or Female',
+    })
+    .optional(),
   daysWithoutBirthControlRing: z.number().int().min(1).optional(),
   daysWithBirthControlRing: z.number().int().min(1).optional(),
 })
@@ -34,6 +41,7 @@ export const GET = withApiLogging(async (request: NextRequest) => {
         lastName: true,
         name: true,
         email: true,
+        sex: true,
         daysWithoutBirthControlRing: true,
         daysWithBirthControlRing: true,
       },
@@ -48,6 +56,7 @@ export const GET = withApiLogging(async (request: NextRequest) => {
       lastName: userProfile.lastName,
       name: userProfile.name,
       email: userProfile.email,
+      sex: userProfile.sex,
       daysWithoutBirthControlRing: userProfile.daysWithoutBirthControlRing,
       daysWithBirthControlRing: userProfile.daysWithBirthControlRing,
     })
@@ -97,7 +106,7 @@ export const PUT = withApiLogging(async (request: NextRequest) => {
       return ApiError.validation(validationResult.error)
     }
 
-    const { firstName, lastName, daysWithoutBirthControlRing, daysWithBirthControlRing } =
+    const { firstName, lastName, sex, daysWithoutBirthControlRing, daysWithBirthControlRing } =
       validationResult.data
 
     // Build update data object
@@ -107,6 +116,9 @@ export const PUT = withApiLogging(async (request: NextRequest) => {
     }
     if (lastName !== undefined) {
       updateData.lastName = lastName
+    }
+    if (sex !== undefined) {
+      updateData.sex = sex
     }
     if (daysWithoutBirthControlRing !== undefined) {
       updateData.daysWithoutBirthControlRing = daysWithoutBirthControlRing
@@ -143,6 +155,7 @@ export const PUT = withApiLogging(async (request: NextRequest) => {
         lastName: true,
         name: true,
         email: true,
+        sex: true,
         daysWithoutBirthControlRing: true,
         daysWithBirthControlRing: true,
       },
@@ -154,6 +167,7 @@ export const PUT = withApiLogging(async (request: NextRequest) => {
       lastName: updatedUser.lastName,
       name: updatedUser.name,
       email: updatedUser.email,
+      sex: updatedUser.sex,
       daysWithoutBirthControlRing: updatedUser.daysWithoutBirthControlRing,
       daysWithBirthControlRing: updatedUser.daysWithBirthControlRing,
     })

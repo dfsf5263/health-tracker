@@ -1,15 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { authClient } from '@/lib/auth-client'
+import { AlertCircle, Calendar, Mail, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { Separator } from '@/components/ui/separator'
 import { Card } from '@/components/ui/card'
-import { AlertCircle, Trash2, Mail, Calendar } from 'lucide-react'
-import { apiFetch, showSuccessToast } from '@/lib/http-utils'
-import { TimePickerDrawer } from '@/components/ui/time-picker-drawer'
 import {
   Dialog,
   DialogContent,
@@ -19,6 +13,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
+import { Switch } from '@/components/ui/switch'
+import { TimePickerDrawer } from '@/components/ui/time-picker-drawer'
+import { authClient } from '@/lib/auth-client'
+import { apiFetch, showSuccessToast } from '@/lib/http-utils'
 
 interface UserSettings {
   birthControlEmailNotifications: boolean
@@ -26,8 +26,13 @@ interface UserSettings {
   ringRemovalReminderTime?: string
 }
 
+interface UserProfile {
+  sex: string
+}
+
 export function AccountForm() {
   const { data: session } = authClient.useSession()
+  const [sex, setSex] = useState<string>('')
   const [birthControlEmailNotifications, setBirthControlEmailNotifications] = useState(false)
   const [ringInsertionReminderTime, setRingInsertionReminderTime] = useState<string>('')
   const [ringRemovalReminderTime, setRingRemovalReminderTime] = useState<string>('')
@@ -36,19 +41,27 @@ export function AccountForm() {
 
   const user = session?.user
 
-  // Load user settings on component mount
+  // Load user settings and profile on component mount
   useEffect(() => {
-    const loadUserSettings = async () => {
-      const { data, error } = await apiFetch<UserSettings>('/api/user/settings')
-      if (error || !data) return
+    const loadData = async () => {
+      const [settingsResult, profileResult] = await Promise.all([
+        apiFetch<UserSettings>('/api/user/settings'),
+        apiFetch<UserProfile>('/api/user/profile'),
+      ])
 
-      setBirthControlEmailNotifications(data.birthControlEmailNotifications)
-      setRingInsertionReminderTime(data.ringInsertionReminderTime || '')
-      setRingRemovalReminderTime(data.ringRemovalReminderTime || '')
+      if (!settingsResult.error && settingsResult.data) {
+        setBirthControlEmailNotifications(settingsResult.data.birthControlEmailNotifications)
+        setRingInsertionReminderTime(settingsResult.data.ringInsertionReminderTime || '')
+        setRingRemovalReminderTime(settingsResult.data.ringRemovalReminderTime || '')
+      }
+
+      if (!profileResult.error && profileResult.data) {
+        setSex(profileResult.data.sex)
+      }
     }
 
     if (user) {
-      loadUserSettings()
+      loadData()
     }
   }, [user])
 
@@ -121,66 +134,70 @@ export function AccountForm() {
         </div>
       </div>
 
-      <Separator />
+      {sex !== 'Male' && (
+        <>
+          <Separator />
 
-      {/* Email Preferences */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Email Preferences</h3>
+          {/* Email Preferences */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Email Preferences</h3>
 
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <Label htmlFor="birth-control-email-notifications">Birth Control Reminders</Label>
-            <p className="text-sm text-muted-foreground">
-              Receive email reminders for birth control medications and schedule
-            </p>
-          </div>
-          <Switch
-            id="birth-control-email-notifications"
-            checked={birthControlEmailNotifications}
-            onCheckedChange={handleEmailNotificationChange}
-            disabled={isLoading}
-          />
-        </div>
-
-        {/* Time Reminders - shown when email notifications are enabled */}
-        {birthControlEmailNotifications && (
-          <div className="space-y-4 pt-4 border-t">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <TimePickerDrawer
-                  label="Ring insertion reminder time"
-                  value={ringInsertionReminderTime}
-                  onSelect={(time) => {
-                    setRingInsertionReminderTime(time)
-                    handleTimeReminderUpdate('ringInsertionReminderTime', time)
-                  }}
-                  placeholder="Select reminder time"
-                  disabled={isLoading}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Time to receive reminders to insert your ring
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Label htmlFor="birth-control-email-notifications">Birth Control Reminders</Label>
+                <p className="text-sm text-muted-foreground">
+                  Receive email reminders for birth control medications and schedule
                 </p>
               </div>
-
-              <div className="space-y-2">
-                <TimePickerDrawer
-                  label="Ring removal reminder time"
-                  value={ringRemovalReminderTime}
-                  onSelect={(time) => {
-                    setRingRemovalReminderTime(time)
-                    handleTimeReminderUpdate('ringRemovalReminderTime', time)
-                  }}
-                  placeholder="Select reminder time"
-                  disabled={isLoading}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Time to receive reminders to remove your ring
-                </p>
-              </div>
+              <Switch
+                id="birth-control-email-notifications"
+                checked={birthControlEmailNotifications}
+                onCheckedChange={handleEmailNotificationChange}
+                disabled={isLoading}
+              />
             </div>
+
+            {/* Time Reminders - shown when email notifications are enabled */}
+            {birthControlEmailNotifications && (
+              <div className="space-y-4 pt-4 border-t">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <TimePickerDrawer
+                      label="Ring insertion reminder time"
+                      value={ringInsertionReminderTime}
+                      onSelect={(time) => {
+                        setRingInsertionReminderTime(time)
+                        handleTimeReminderUpdate('ringInsertionReminderTime', time)
+                      }}
+                      placeholder="Select reminder time"
+                      disabled={isLoading}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Time to receive reminders to insert your ring
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <TimePickerDrawer
+                      label="Ring removal reminder time"
+                      value={ringRemovalReminderTime}
+                      onSelect={(time) => {
+                        setRingRemovalReminderTime(time)
+                        handleTimeReminderUpdate('ringRemovalReminderTime', time)
+                      }}
+                      placeholder="Select reminder time"
+                      disabled={isLoading}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Time to receive reminders to remove your ring
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       <Separator />
 

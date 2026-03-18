@@ -120,10 +120,24 @@ describe('DELETE /api/birth-control-types/[id]', () => {
       id: TYPE_ID,
       userId: 'test-user-id-123',
     } as never)
+    db.birthControlDay.count.mockResolvedValue(0 as never)
     db.birthControlType.delete.mockResolvedValue({} as never)
 
     const res = await DELETE(makeRequest('DELETE'), makeParams())
     expect(res.status).toBe(200)
+  })
+
+  it('returns 409 when type is in use', async () => {
+    mockRequireAuth.mockResolvedValue(mockAuthContext())
+    db.birthControlType.findFirst.mockResolvedValue({
+      id: TYPE_ID,
+      userId: 'test-user-id-123',
+    } as never)
+    db.birthControlDay.count.mockResolvedValue(3 as never)
+
+    const res = await DELETE(makeRequest('DELETE'), makeParams())
+    expect(res.status).toBe(409)
+    expect(db.birthControlType.delete).not.toHaveBeenCalled()
   })
 
   it('returns 404 when type not found', async () => {

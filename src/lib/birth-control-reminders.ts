@@ -52,6 +52,7 @@ export async function getEligibleUsers(): Promise<UserReminderSettings[]> {
       daysWithBirthControlRing: true,
       averageCycleLength: true,
       averagePeriodLength: true,
+      sex: true,
       createdAt: true,
       updatedAt: true,
     },

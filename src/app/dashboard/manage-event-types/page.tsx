@@ -1,16 +1,28 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { BirthControlTypeCard } from '@/components/birth-control-type-card'
+import { BirthControlTypeForm } from '@/components/birth-control-type-form'
+import { IrregularPhysicalTypeCard } from '@/components/irregular-physical-type-card'
+import { IrregularPhysicalTypeForm } from '@/components/irregular-physical-type-form'
+import { MigraineActivityTypeCard } from '@/components/migraine-activity-type-card'
+import { MigraineActivityTypeForm } from '@/components/migraine-activity-type-form'
+import { MigraineAttackTypeCard } from '@/components/migraine-attack-type-card'
+import { MigraineAttackTypeForm } from '@/components/migraine-attack-type-form'
+import { MigraineMedicationTypeCard } from '@/components/migraine-medication-type-card'
+import { MigraineMedicationTypeForm } from '@/components/migraine-medication-type-form'
+import { MigrainePrecognitionTypeCard } from '@/components/migraine-precognition-type-card'
+import { MigrainePrecognitionTypeForm } from '@/components/migraine-precognition-type-form'
+import { MigraineReliefTypeCard } from '@/components/migraine-relief-type-card'
+import { MigraineReliefTypeForm } from '@/components/migraine-relief-type-form'
+import { MigraineSymptomTypeCard } from '@/components/migraine-symptom-type-card'
+import { MigraineSymptomTypeForm } from '@/components/migraine-symptom-type-form'
+import { MigraineTriggerTypeCard } from '@/components/migraine-trigger-type-card'
+import { MigraineTriggerTypeForm } from '@/components/migraine-trigger-type-form'
+import { NormalPhysicalTypeCard } from '@/components/normal-physical-type-card'
+import { NormalPhysicalTypeForm } from '@/components/normal-physical-type-form'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -19,26 +31,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { BirthControlTypeCard } from '@/components/birth-control-type-card'
-import { BirthControlTypeForm } from '@/components/birth-control-type-form'
-import { IrregularPhysicalTypeCard } from '@/components/irregular-physical-type-card'
-import { IrregularPhysicalTypeForm } from '@/components/irregular-physical-type-form'
-import { NormalPhysicalTypeCard } from '@/components/normal-physical-type-card'
-import { NormalPhysicalTypeForm } from '@/components/normal-physical-type-form'
-import { MigraineAttackTypeCard } from '@/components/migraine-attack-type-card'
-import { MigraineAttackTypeForm } from '@/components/migraine-attack-type-form'
-import { MigraineSymptomTypeCard } from '@/components/migraine-symptom-type-card'
-import { MigraineSymptomTypeForm } from '@/components/migraine-symptom-type-form'
-import { MigraineTriggerTypeCard } from '@/components/migraine-trigger-type-card'
-import { MigraineTriggerTypeForm } from '@/components/migraine-trigger-type-form'
-import { MigrainePrecognitionTypeCard } from '@/components/migraine-precognition-type-card'
-import { MigrainePrecognitionTypeForm } from '@/components/migraine-precognition-type-form'
-import { MigraineMedicationTypeCard } from '@/components/migraine-medication-type-card'
-import { MigraineMedicationTypeForm } from '@/components/migraine-medication-type-form'
-import { MigraineReliefTypeCard } from '@/components/migraine-relief-type-card'
-import { MigraineReliefTypeForm } from '@/components/migraine-relief-type-form'
-import { MigraineActivityTypeCard } from '@/components/migraine-activity-type-card'
-import { MigraineActivityTypeForm } from '@/components/migraine-activity-type-form'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { apiFetch, showSuccessToast } from '@/lib/http-utils'
 
 interface BirthControlType {
@@ -137,6 +137,7 @@ const eventTypeOptions = [
 ]
 
 export default function ManageEventTypesPage() {
+  const [sex, setSex] = useState('')
   const [selectedEventType, setSelectedEventType] = useState('birth-control')
   const [birthControlTypes, setBirthControlTypes] = useState<BirthControlType[]>([])
   const [irregularPhysicalTypes, setIrregularPhysicalTypes] = useState<IrregularPhysicalType[]>([])
@@ -185,6 +186,25 @@ export default function ManageEventTypesPage() {
   const [selectedMigraineActivityType, setSelectedMigraineActivityType] = useState<
     MigraineActivityType | undefined
   >(undefined)
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      const { data } = await apiFetch<{ sex: string }>('/api/user/profile')
+      if (data) {
+        setSex(data.sex)
+      }
+    }
+    loadProfile()
+  }, [])
+
+  useEffect(() => {
+    if (sex === 'Male' && selectedEventType === 'birth-control') {
+      setSelectedEventType('irregular-physical')
+    }
+  }, [sex, selectedEventType])
+
+  const visibleEventTypeOptions =
+    sex === 'Male' ? eventTypeOptions.filter((o) => o.value !== 'birth-control') : eventTypeOptions
 
   useEffect(() => {
     if (selectedEventType === 'birth-control') {
@@ -1716,7 +1736,7 @@ export default function ManageEventTypesPage() {
               <SelectValue placeholder="Select event type" />
             </SelectTrigger>
             <SelectContent>
-              {eventTypeOptions.map((option) => (
+              {visibleEventTypeOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>

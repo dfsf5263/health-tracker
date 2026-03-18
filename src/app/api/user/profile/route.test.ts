@@ -49,6 +49,7 @@ describe('GET /api/user/profile', () => {
       lastName: 'User',
       name: 'Test User',
       email: 'test@example.com',
+      sex: 'Female',
       daysWithoutBirthControlRing: 7,
       daysWithBirthControlRing: 21,
     } as never)
@@ -58,6 +59,7 @@ describe('GET /api/user/profile', () => {
     const data = await res.json()
     expect(data.firstName).toBe('Test')
     expect(data.email).toBe('test@example.com')
+    expect(data.sex).toBe('Female')
     expect(data.daysWithBirthControlRing).toBe(21)
   })
 
@@ -122,6 +124,7 @@ describe('PUT /api/user/profile', () => {
       lastName: 'User',
       name: 'Test User',
       email: 'test@example.com',
+      sex: 'Male',
       daysWithoutBirthControlRing: 7,
       daysWithBirthControlRing: 21,
     } as never)
@@ -132,5 +135,57 @@ describe('PUT /api/user/profile', () => {
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.daysWithBirthControlRing).toBe(21)
+  })
+
+  it('updates sex to Male', async () => {
+    mockRequireAuth.mockResolvedValue(mockAuthContext())
+
+    db.user.update.mockResolvedValue({
+      firstName: 'Test',
+      lastName: 'User',
+      name: 'Test User',
+      email: 'test@example.com',
+      sex: 'Male',
+      daysWithoutBirthControlRing: null,
+      daysWithBirthControlRing: null,
+    } as never)
+
+    const res = await PUT(makeRequest('PUT', { sex: 'Male' }))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.sex).toBe('Male')
+  })
+
+  it('updates sex to Female', async () => {
+    mockRequireAuth.mockResolvedValue(mockAuthContext())
+
+    db.user.update.mockResolvedValue({
+      firstName: 'Test',
+      lastName: 'User',
+      name: 'Test User',
+      email: 'test@example.com',
+      sex: 'Female',
+      daysWithoutBirthControlRing: null,
+      daysWithBirthControlRing: null,
+    } as never)
+
+    const res = await PUT(makeRequest('PUT', { sex: 'Female' }))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.sex).toBe('Female')
+  })
+
+  it('returns 400 for sex Unknown', async () => {
+    mockRequireAuth.mockResolvedValue(mockAuthContext())
+
+    const res = await PUT(makeRequest('PUT', { sex: 'Unknown' }))
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 400 for sex NotApplicable', async () => {
+    mockRequireAuth.mockResolvedValue(mockAuthContext())
+
+    const res = await PUT(makeRequest('PUT', { sex: 'NotApplicable' }))
+    expect(res.status).toBe(400)
   })
 })

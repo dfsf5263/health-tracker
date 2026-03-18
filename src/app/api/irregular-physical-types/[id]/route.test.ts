@@ -97,10 +97,24 @@ describe('DELETE /api/irregular-physical-types/[id]', () => {
       id: TYPE_ID,
       userId: 'test-user-id-123',
     } as never)
+    db.irregularPhysicalDay.count.mockResolvedValue(0 as never)
     db.irregularPhysicalType.delete.mockResolvedValue({} as never)
 
     const res = await DELETE(makeRequest('DELETE'), makeParams())
     expect(res.status).toBe(200)
+  })
+
+  it('returns 409 when type is in use', async () => {
+    mockRequireAuth.mockResolvedValue(mockAuthContext())
+    db.irregularPhysicalType.findFirst.mockResolvedValue({
+      id: TYPE_ID,
+      userId: 'test-user-id-123',
+    } as never)
+    db.irregularPhysicalDay.count.mockResolvedValue(3 as never)
+
+    const res = await DELETE(makeRequest('DELETE'), makeParams())
+    expect(res.status).toBe(409)
+    expect(db.irregularPhysicalType.delete).not.toHaveBeenCalled()
   })
 
   it('returns 404 when type not found', async () => {

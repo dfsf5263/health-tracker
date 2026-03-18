@@ -5,6 +5,8 @@ describe('getPageTitle', () => {
   it('returns correct title for known routes', () => {
     expect(getPageTitle('/dashboard')).toBe('Dashboard')
     expect(getPageTitle('/dashboard/analytics')).toBe('Analytics')
+    expect(getPageTitle('/dashboard/analytics/migraines')).toBe('Migraine Breakdown')
+    expect(getPageTitle('/dashboard/analytics/cycle-tracking')).toBe('Cycle Tracking')
     expect(getPageTitle('/dashboard/add-event')).toBe('Add Event')
     expect(getPageTitle('/dashboard/settings')).toBe('Settings')
     expect(getPageTitle('/dashboard/settings/profile')).toBe('Profile Settings')
