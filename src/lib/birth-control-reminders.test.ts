@@ -14,8 +14,13 @@ import {
   getEligibleUsers,
   hasTodaysEvent,
   qualifyUserForReminder,
+  getRingPrediction,
+  processReminderUsers,
 } from './birth-control-reminders'
+import { predictNextRingEvent } from '@/lib/ring-prediction'
 import type { RingPredictionResult } from './ring-prediction'
+
+const mockPredictNextRingEvent = vi.mocked(predictNextRingEvent)
 
 // Suppress console.log output from the module's DEBUG logging
 beforeEach(() => {
@@ -236,5 +241,171 @@ describe('qualifyUserForReminder', () => {
     const result = await qualifyUserForReminder(user)
     expect(result.shouldSendReminder).toBe(false)
     expect(result.reminderType).toBeNull()
+  })
+
+  it('returns insertion reminder when user has today insertion event in window', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2024, 2, 15, 10, 5, 0)) // 10:05, window 10:00-10:14
+
+    const user = {
+      id: 'user-1',
+      email: 'test@example.com',
+      ringInsertionReminderTime: new Date(2024, 0, 1, 10, 5, 0), // 10:05 — in window
+      ringRemovalReminderTime: new Date(2024, 0, 1, 18, 0, 0),
+    } as never
+
+    db.birthControlDay.findFirst.mockResolvedValue({ id: 'event-1' } as never)
+
+    const result = await qualifyUserForReminder(user)
+    expect(result.shouldSendReminder).toBe(true)
+    expect(result.reminderType).toBe('insertion')
+  })
+
+  it('returns insertion reminder from prediction when no today event', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2024, 2, 15, 10, 5, 0))
+
+    const user = {
+      id: 'user-1',
+      email: 'test@example.com',
+      ringInsertionReminderTime: new Date(2024, 0, 1, 10, 5, 0),
+      ringRemovalReminderTime: new Date(2024, 0, 1, 18, 0, 0),
+    } as never
+
+    // No today's event
+    db.birthControlDay.findFirst.mockResolvedValue(null)
+
+    // getRingPrediction internals
+    db.user.findUnique.mockResolvedValue({
+      daysWithBirthControlRing: 21,
+      daysWithoutBirthControlRing: 7,
+    } as never)
+    db.birthControlDay.findMany.mockResolvedValue([] as never)
+    mockPredictNextRingEvent.mockReturnValue({
+      prediction: {
+        predictedDate: new Date(Date.UTC(2024, 2, 15)),
+        eventType: 'insertion',
+        confidence: 85,
+      },
+      basedOnEvents: 3,
+      userSettings: {},
+    })
+
+    const result = await qualifyUserForReminder(user)
+    expect(result.shouldSendReminder).toBe(true)
+    expect(result.reminderType).toBe('insertion')
+  })
+
+  it('returns no reminder when no event and prediction is for different day', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2024, 2, 15, 10, 5, 0))
+
+    const user = {
+      id: 'user-1',
+      email: 'test@example.com',
+      ringInsertionReminderTime: new Date(2024, 0, 1, 10, 5, 0),
+      ringRemovalReminderTime: new Date(2024, 0, 1, 18, 0, 0),
+    } as never
+
+    db.birthControlDay.findFirst.mockResolvedValue(null)
+    db.user.findUnique.mockResolvedValue({
+      daysWithBirthControlRing: 21,
+      daysWithoutBirthControlRing: 7,
+    } as never)
+    db.birthControlDay.findMany.mockResolvedValue([] as never)
+    mockPredictNextRingEvent.mockReturnValue({
+      prediction: {
+        predictedDate: new Date(Date.UTC(2024, 2, 20)),
+        eventType: 'insertion',
+        confidence: 85,
+      },
+      basedOnEvents: 3,
+      userSettings: {},
+    })
+
+    const result = await qualifyUserForReminder(user)
+    expect(result.shouldSendReminder).toBe(false)
+  })
+})
+
+describe('getRingPrediction', () => {
+  it('returns prediction when user exists', async () => {
+    db.user.findUnique.mockResolvedValue({
+      daysWithBirthControlRing: 21,
+      daysWithoutBirthControlRing: 7,
+    } as never)
+    db.birthControlDay.findMany.mockResolvedValue([] as never)
+    mockPredictNextRingEvent.mockReturnValue({
+      prediction: null,
+      basedOnEvents: 0,
+      userSettings: {},
+    })
+
+    const result = await getRingPrediction('user-1')
+    expect(result).toBeDefined()
+    expect(mockPredictNextRingEvent).toHaveBeenCalled()
+  })
+
+  it('returns null when user not found', async () => {
+    db.user.findUnique.mockResolvedValue(null)
+
+    const result = await getRingPrediction('user-1')
+    expect(result).toBeNull()
+  })
+
+  it('returns null on error', async () => {
+    db.user.findUnique.mockRejectedValue(new Error('db error'))
+
+    const result = await getRingPrediction('user-1')
+    expect(result).toBeNull()
+  })
+})
+
+describe('processReminderUsers', () => {
+  it('processes eligible users and returns results', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2024, 2, 15, 10, 5, 0))
+
+    const users = [
+      {
+        id: 'user-1',
+        email: 'a@test.com',
+        firstName: 'Alice',
+        name: 'Alice Smith',
+        ringInsertionReminderTime: new Date(2024, 0, 1, 14, 0, 0), // not in window
+        ringRemovalReminderTime: new Date(2024, 0, 1, 18, 0, 0),
+      },
+    ]
+
+    db.user.findMany.mockResolvedValue(users as never)
+
+    const results = await processReminderUsers()
+    expect(results).toHaveLength(1)
+    expect(results[0].qualified).toBe(false)
+  })
+
+  it('handles errors for individual users', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2024, 2, 15, 10, 5, 0))
+
+    const users = [
+      {
+        id: 'user-1',
+        email: 'a@test.com',
+        firstName: null,
+        name: null,
+        ringInsertionReminderTime: new Date(2024, 0, 1, 10, 5, 0),
+        ringRemovalReminderTime: null,
+      },
+    ]
+
+    db.user.findMany.mockResolvedValue(users as never)
+    // Force hasTodaysEvent to throw
+    db.birthControlDay.findFirst.mockRejectedValue(new Error('db error'))
+
+    const results = await processReminderUsers()
+    expect(results).toHaveLength(1)
+    expect(results[0].qualified).toBe(false)
+    expect(results[0].error).toBe('db error')
   })
 })

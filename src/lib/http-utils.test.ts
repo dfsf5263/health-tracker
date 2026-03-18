@@ -142,3 +142,43 @@ describe('showSuccessToast', () => {
     })
   })
 })
+
+describe('rateAwareApiFetch', () => {
+  const originalFetch = globalThis.fetch
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  it('returns isRateLimited false on success', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ id: 1 }),
+    })
+
+    const { rateAwareApiFetch } = await import('./http-utils')
+    const result = await rateAwareApiFetch('/api/test', { showErrorToast: false })
+
+    expect(result.isRateLimited).toBe(false)
+    expect(result.data).toEqual({ id: 1 })
+  })
+
+  it('returns isRateLimited true on 429', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      headers: new Headers({ 'Retry-After': '10' }),
+      json: () => Promise.resolve({ error: 'Rate limit' }),
+    })
+
+    const { rateAwareApiFetch } = await import('./http-utils')
+    const result = await rateAwareApiFetch('/api/test', {
+      showRateLimitToast: false,
+      showErrorToast: false,
+    })
+
+    expect(result.isRateLimited).toBe(true)
+    expect(result.data).toBeNull()
+  })
+})
