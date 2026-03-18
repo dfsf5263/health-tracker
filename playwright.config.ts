@@ -25,15 +25,45 @@ export default defineConfig({
       name: 'setup',
       testMatch: /setup\/auth\.setup\.ts/,
     },
-    // All tests use the saved session and depend on auth setup
+    // Sex setup — ensures the E2E user is Female before main tests
+    {
+      name: 'sex-setup',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/user.json',
+      },
+      testMatch: /setup\/sex\.setup\.ts/,
+      dependencies: ['setup'],
+    },
+    // All tests use the saved session and depend on auth + sex setup
     {
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
         storageState: 'tests/e2e/.auth/user.json',
       },
-      testIgnore: /auth\.spec\.ts/,
-      dependencies: ['setup'],
+      testIgnore: /auth\.spec\.ts|sex-(female|male)\.spec\.ts/,
+      dependencies: ['setup', 'sex-setup'],
+    },
+    // Female UI assertions — run after main tests
+    {
+      name: 'sex-female-tests',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/user.json',
+      },
+      testMatch: /sex-female\.spec\.ts/,
+      dependencies: ['chromium'],
+    },
+    // Male UI assertions — run after Female tests
+    {
+      name: 'sex-male-tests',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/user.json',
+      },
+      testMatch: /sex-male\.spec\.ts/,
+      dependencies: ['sex-female-tests'],
     },
     // Auth spec runs last — sign-out invalidates the server session
     {
@@ -43,7 +73,7 @@ export default defineConfig({
         storageState: 'tests/e2e/.auth/user.json',
       },
       testMatch: /auth\.spec\.ts/,
-      dependencies: ['chromium'],
+      dependencies: ['sex-male-tests'],
     },
   ],
 

@@ -35,6 +35,7 @@ describe('GET /api/birth-control/ring-predictions', () => {
   it('returns ring predictions', async () => {
     mockRequireAuth.mockResolvedValue(mockAuthContext())
     db.user.findUnique.mockResolvedValue({
+      sex: 'Female',
       daysWithBirthControlRing: 21,
       daysWithoutBirthControlRing: 7,
     } as never)
@@ -65,5 +66,21 @@ describe('GET /api/birth-control/ring-predictions', () => {
 
     const res = await GET(makeRequest())
     expect(res.status).toBe(404)
+  })
+
+  it('returns empty prediction for Male user', async () => {
+    mockRequireAuth.mockResolvedValue(mockAuthContext())
+    db.user.findUnique.mockResolvedValue({
+      sex: 'Male',
+      daysWithBirthControlRing: null,
+      daysWithoutBirthControlRing: null,
+    } as never)
+
+    const res = await GET(makeRequest())
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data).toEqual({ prediction: null, basedOnEvents: 0, userSettings: {} })
+    expect(mockPredictNextRingEvent).not.toHaveBeenCalled()
+    expect(db.birthControlDay.findMany).not.toHaveBeenCalled()
   })
 })

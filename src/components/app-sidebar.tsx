@@ -1,10 +1,21 @@
 'use client'
 
-import * as React from 'react'
-import Link from 'next/link'
+import {
+  Activity,
+  Brain,
+  Calendar,
+  ChevronRight,
+  Settings,
+  Shield,
+  User,
+  UserCog,
+} from 'lucide-react'
 import Image from 'next/image'
-import { Calendar, User, Settings, BarChart3, ChevronRight, Shield, UserCog } from 'lucide-react'
+import Link from 'next/link'
+import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
+import { NavGroup } from '@/components/nav-group'
 import { NavMain } from '@/components/nav-main'
 import { NavUser } from '@/components/nav-user'
 import { NavUserErrorBoundary } from '@/components/nav-user-error-boundary'
@@ -21,6 +32,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
+import { apiFetch } from '@/lib/http-utils'
 
 const data = {
   navMain: [
@@ -28,11 +40,6 @@ const data = {
       title: 'Dashboard',
       url: '/dashboard',
       icon: Calendar,
-    },
-    {
-      title: 'Analytics',
-      url: '/dashboard/analytics',
-      icon: BarChart3,
     },
     {
       title: 'Manage Event Types',
@@ -60,6 +67,28 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const [sex, setSex] = useState('')
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      const { data } = await apiFetch<{ sex: string }>('/api/user/profile')
+      if (data) {
+        setSex(data.sex)
+      }
+    }
+    loadProfile()
+  }, [])
+
+  const analyticsItems = useMemo(
+    () => [
+      { name: 'Migraine Breakdown', url: '/dashboard/analytics/migraines', icon: Brain },
+      ...(sex !== 'Male'
+        ? [{ name: 'Cycle Tracking', url: '/dashboard/analytics/cycle-tracking', icon: Activity }]
+        : []),
+    ],
+    [sex]
+  )
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -82,6 +111,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
+        <NavGroup title="Analytics" items={analyticsItems} />
 
         {/* Collapsible Settings Section */}
         <Collapsible defaultOpen className="group/collapsible">

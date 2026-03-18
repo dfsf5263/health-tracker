@@ -6,6 +6,13 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Sex {
+  Unknown
+  Male
+  Female
+  NotApplicable
+}
+
 model User {
   id                           String                 @id @default(uuid()) @db.Uuid
   email                        String                 @unique
@@ -16,6 +23,7 @@ model User {
   lastName                     String?                @map("last_name")
   passwordHash                 String?                @map("password_hash")
   twoFactorEnabled             Boolean?               @map("two_factor_enabled")
+  sex                          Sex                    @default(Unknown)
   birthControlEmailNotifications Boolean             @default(false) @map("birth_control_email_notifications")
   daysWithoutBirthControlRing  Int?                   @map("days_without_birth_control_ring")
   daysWithBirthControlRing     Int?                   @map("days_with_birth_control_ring")

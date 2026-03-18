@@ -1,41 +1,40 @@
 'use client'
 
-import * as React from 'react'
-import { useRouter } from 'next/navigation'
 import {
-  PlusIcon,
-  Droplet,
-  Pill,
-  Activity,
-  Heart,
-  Brain,
-  PencilIcon,
-  Trash2Icon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  RectangleVertical,
-} from 'lucide-react'
-
-import { Button } from '@/components/ui/button'
-import { CalendarDayButton, Calendar as CalendarComponent } from '@/components/ui/calendar'
-import { Card, CardContent, CardFooter } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { apiFetch, showSuccessToast } from '@/lib/http-utils'
-import {
-  Cycle,
-  PeriodDay,
-  Color,
   BirthControlDay,
   BirthControlType,
+  Color,
+  Cycle,
   IrregularPhysicalDay,
   IrregularPhysicalType,
+  Migraine,
   NormalPhysicalDay,
   NormalPhysicalType,
-  Migraine,
+  PeriodDay,
 } from '@prisma/client'
-import { PredictionResult } from '@/lib/cycle-prediction'
-import { RingPredictionResult } from '@/lib/ring-prediction'
+import {
+  Activity,
+  Brain,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  Droplet,
+  Heart,
+  PencilIcon,
+  Pill,
+  PlusIcon,
+  RectangleVertical,
+  Trash2Icon,
+} from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import * as React from 'react'
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Calendar as CalendarComponent, CalendarDayButton } from '@/components/ui/calendar'
+import { Card, CardContent, CardFooter } from '@/components/ui/card'
+import { PredictionResult } from '@/lib/cycle-prediction'
+import { apiFetch, showSuccessToast } from '@/lib/http-utils'
+import { RingPredictionResult } from '@/lib/ring-prediction'
 import { MigraineWithRelationships } from '@/lib/types'
 
 type EventType = 'period' | 'birth-control' | 'irregular-physical' | 'normal-physical' | 'migraine'
@@ -347,6 +346,276 @@ function MigraineCard({
   )
 }
 
+type EventSectionEvent =
+  | PeriodDay
+  | BirthControlDayWithType
+  | IrregularPhysicalDayWithType
+  | NormalPhysicalDayWithType
+  | MigraineWithRelationships
+
+interface EventSectionProps {
+  config: EventTypeConfig
+  events: EventSectionEvent[]
+  onEdit: (eventId: string, eventType: EventType) => void
+  onDelete: (eventId: string, eventType: EventType) => Promise<void>
+}
+
+function EventSection({ config, events, onEdit, onDelete }: EventSectionProps) {
+  const Icon = config.icon
+  const hasEvents = events.length > 0
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+  const [deletingId, setDeletingId] = React.useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = React.useState(false)
+
+  const handleDeleteClick = (eventId: string) => {
+    setDeletingId(eventId)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingId) return
+
+    setIsDeleting(true)
+    try {
+      await onDelete(deletingId, config.type)
+      setDeleteDialogOpen(false)
+    } catch (error) {
+      console.error(`Error deleting ${config.label.toLowerCase()}:`, error)
+    } finally {
+      setIsDeleting(false)
+      setDeletingId(null)
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Icon className={`h-3 w-3 ${config.color}`} />
+        <span className="text-xs font-medium">{config.label}</span>
+      </div>
+
+      {!config.implemented ? (
+        <div className="text-xs text-muted-foreground ml-5">Coming soon</div>
+      ) : hasEvents ? (
+        <div className="space-y-2">
+          {config.type === 'period' &&
+            events.map((event) => {
+              const periodDay = event as PeriodDay
+              return (
+                <Card key={periodDay.id} className="p-3">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1 space-y-1">
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Flow: </span>
+                        <span className="capitalize">
+                          {periodDay.flow === 'SuperHeavy'
+                            ? 'Super Heavy'
+                            : periodDay.flow.toLowerCase()}
+                        </span>
+                      </div>
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Color: </span>
+                        <span className="capitalize">{periodDay.color.toLowerCase()}</span>
+                      </div>
+                      {periodDay.notes && (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Notes: </span>
+                          <span>{periodDay.notes}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => onEdit(periodDay.id, config.type)}
+                      >
+                        <PencilIcon className="h-3 w-3" />
+                        <span className="sr-only">Edit</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleDeleteClick(periodDay.id)}
+                      >
+                        <Trash2Icon className="h-3 w-3" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              )
+            })}
+          {config.type === 'birth-control' &&
+            events.map((event) => {
+              const bcDay = event as BirthControlDayWithType
+              return (
+                <Card key={bcDay.id} className="p-3">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1 space-y-1">
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Type: </span>
+                        <span>{bcDay.type.name}</span>
+                      </div>
+                      {(bcDay.type.vaginalRingInsertion || bcDay.type.vaginalRingRemoval) && (
+                        <div className="flex gap-2">
+                          {bcDay.type.vaginalRingInsertion && (
+                            <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                              Ring Insertion
+                            </span>
+                          )}
+                          {bcDay.type.vaginalRingRemoval && (
+                            <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-700/10">
+                              Ring Removal
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {bcDay.notes && (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Notes: </span>
+                          <span>{bcDay.notes}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => onEdit(bcDay.id, config.type)}
+                      >
+                        <PencilIcon className="h-3 w-3" />
+                        <span className="sr-only">Edit</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleDeleteClick(bcDay.id)}
+                      >
+                        <Trash2Icon className="h-3 w-3" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              )
+            })}
+          {config.type === 'irregular-physical' &&
+            events.map((event) => {
+              const ipDay = event as IrregularPhysicalDayWithType
+              return (
+                <Card key={ipDay.id} className="p-3">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1 space-y-1">
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Type: </span>
+                        <span>{ipDay.type.name}</span>
+                      </div>
+                      {ipDay.notes && (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Notes: </span>
+                          <span>{ipDay.notes}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => onEdit(ipDay.id, config.type)}
+                      >
+                        <PencilIcon className="h-3 w-3" />
+                        <span className="sr-only">Edit</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleDeleteClick(ipDay.id)}
+                      >
+                        <Trash2Icon className="h-3 w-3" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              )
+            })}
+          {config.type === 'normal-physical' &&
+            events.map((event) => {
+              const npDay = event as NormalPhysicalDayWithType
+              return (
+                <Card key={npDay.id} className="p-3">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1 space-y-1">
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Type: </span>
+                        <span>{npDay.type.name}</span>
+                      </div>
+                      {npDay.notes && (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Notes: </span>
+                          <span>{npDay.notes}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => onEdit(npDay.id, config.type)}
+                      >
+                        <PencilIcon className="h-3 w-3" />
+                        <span className="sr-only">Edit</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleDeleteClick(npDay.id)}
+                      >
+                        <Trash2Icon className="h-3 w-3" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              )
+            })}
+          {config.type === 'migraine' &&
+            events.map((event) => (
+              <MigraineCard
+                key={event.id}
+                migraine={event as MigraineWithRelationships}
+                onEdit={(id) => onEdit(id, config.type)}
+                onDelete={handleDeleteClick}
+              />
+            ))}
+        </div>
+      ) : (
+        <div className="text-xs text-muted-foreground ml-5">
+          No {config.label.toLowerCase()} events
+        </div>
+      )}
+
+      <DeleteConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDeleteConfirm}
+        title={`Delete ${config.label}`}
+        description={`Are you sure you want to delete this ${config.label.toLowerCase()}? This action cannot be undone.`}
+        isDeleting={isDeleting}
+      />
+    </div>
+  )
+}
+
 const eventTypeConfigs: EventTypeConfig[] = [
   {
     type: 'period',
@@ -405,13 +674,22 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
   const [migraines, setMigraines] = React.useState<Migraine[]>([])
   const [predictions, setPredictions] = React.useState<PredictionResult | null>(null)
   const [ringPredictions, setRingPredictions] = React.useState<RingPredictionResult | null>(null)
+  const [sex, setSex] = React.useState('')
   const [isLoading, setIsLoading] = React.useState(true)
+
+  const visibleEventTypeConfigs = React.useMemo(
+    () =>
+      sex === 'Male'
+        ? eventTypeConfigs.filter((c) => c.type !== 'period' && c.type !== 'birth-control')
+        : eventTypeConfigs,
+    [sex]
+  )
 
   const fetchData = React.useCallback(async () => {
     setIsLoading(true)
     onLoadingChange?.(true)
     try {
-      // Fetch cycles, period days, birth control days, irregular physical days, normal physical days, and migraines in parallel
+      // Fetch cycles, period days, birth control days, irregular physical days, normal physical days, migraines, and user profile in parallel
       const [
         { data: cyclesData, error: cyclesError },
         { data: periodDaysData, error: periodDaysError },
@@ -419,6 +697,7 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
         { data: irregularPhysicalDaysData, error: irregularPhysicalDaysError },
         { data: normalPhysicalDaysData, error: normalPhysicalDaysError },
         { data: migrainesData, error: migrainesError },
+        { data: profileData },
       ] = await Promise.all([
         apiFetch<Cycle[]>('/api/cycles'),
         apiFetch<PeriodDay[]>('/api/period-days'),
@@ -426,38 +705,50 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
         apiFetch<IrregularPhysicalDayWithType[]>('/api/irregular-physical-days'),
         apiFetch<NormalPhysicalDayWithType[]>('/api/normal-physical-days'),
         apiFetch<MigraineWithRelationships[]>('/api/migraines'),
+        apiFetch<{ sex: string }>('/api/user/profile'),
       ])
 
-      if (!cyclesError && cyclesData) {
-        setCycles(cyclesData)
+      const sexValue = profileData?.sex ?? ''
+      setSex(sexValue)
 
-        // Fetch predictions if we have enough cycles
-        if (cyclesData.length >= 3) {
-          const { data: predictionsData, error: predictionsError } =
-            await apiFetch<PredictionResult>('/api/cycles/predictions?count=6')
-          if (!predictionsError && predictionsData) {
-            setPredictions(predictionsData)
+      if (sexValue !== 'Male') {
+        if (!cyclesError && cyclesData) {
+          setCycles(cyclesData)
+
+          // Fetch predictions if we have enough cycles
+          if (cyclesData.length >= 3) {
+            const { data: predictionsData, error: predictionsError } =
+              await apiFetch<PredictionResult>('/api/cycles/predictions?count=6')
+            if (!predictionsError && predictionsData) {
+              setPredictions(predictionsData)
+            }
+          } else {
+            setPredictions(null)
           }
-        } else {
-          setPredictions(null)
         }
-      }
 
-      if (!periodDaysError && periodDaysData) {
-        setPeriodDays(periodDaysData)
-      }
-
-      if (!birthControlDaysError && birthControlDaysData) {
-        setBirthControlDays(birthControlDaysData)
-
-        // Fetch ring predictions if we have birth control data
-        const { data: ringPredictionsData, error: ringPredictionsError } =
-          await apiFetch<RingPredictionResult>('/api/birth-control/ring-predictions')
-        if (!ringPredictionsError && ringPredictionsData) {
-          setRingPredictions(ringPredictionsData)
-        } else {
-          setRingPredictions(null)
+        if (!periodDaysError && periodDaysData) {
+          setPeriodDays(periodDaysData)
         }
+
+        if (!birthControlDaysError && birthControlDaysData) {
+          setBirthControlDays(birthControlDaysData)
+
+          // Fetch ring predictions if we have birth control data
+          const { data: ringPredictionsData, error: ringPredictionsError } =
+            await apiFetch<RingPredictionResult>('/api/birth-control/ring-predictions')
+          if (!ringPredictionsError && ringPredictionsData) {
+            setRingPredictions(ringPredictionsData)
+          } else {
+            setRingPredictions(null)
+          }
+        }
+      } else {
+        setCycles([])
+        setPeriodDays([])
+        setBirthControlDays([])
+        setPredictions(null)
+        setRingPredictions(null)
       }
 
       if (!irregularPhysicalDaysError && irregularPhysicalDaysData) {
@@ -655,313 +946,48 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
     router.push('/dashboard/add-event')
   }
 
-  const EventSection = ({
-    config,
-    selectedDate,
-  }: {
-    config: EventTypeConfig
-    selectedDate: Date | undefined
-  }) => {
-    const Icon = config.icon
-    const events = getEventsForDate(selectedDate, config.type)
-    const hasEvents = events.length > 0
-    const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
-    const [deletingId, setDeletingId] = React.useState<string | null>(null)
-    const [isDeleting, setIsDeleting] = React.useState(false)
-
-    const handleEdit = (eventId: string, eventType: EventType) => {
-      console.log('Tracker calendar - handling edit:', { eventId, eventType })
-
-      if (eventType === 'period') {
-        router.push(`/dashboard/edit-period-day?id=${eventId}`)
-      } else if (eventType === 'birth-control') {
-        router.push(`/dashboard/edit-birth-control-day?id=${eventId}`)
-      } else if (eventType === 'irregular-physical') {
-        router.push(`/dashboard/edit-irregular-physical-day?id=${eventId}`)
-      } else if (eventType === 'normal-physical') {
-        router.push(`/dashboard/edit-normal-physical-day?id=${eventId}`)
-      } else if (eventType === 'migraine') {
-        const url = `/dashboard/edit-migraine?id=${eventId}`
-        console.log('Navigating to migraine edit:', url)
+  const handleEdit = React.useCallback(
+    (eventId: string, eventType: EventType) => {
+      const editRoutes: Record<EventType, string> = {
+        period: `/dashboard/edit-period-day?id=${eventId}`,
+        'birth-control': `/dashboard/edit-birth-control-day?id=${eventId}`,
+        'irregular-physical': `/dashboard/edit-irregular-physical-day?id=${eventId}`,
+        'normal-physical': `/dashboard/edit-normal-physical-day?id=${eventId}`,
+        migraine: `/dashboard/edit-migraine?id=${eventId}`,
+      }
+      const url = editRoutes[eventType]
+      if (url) {
         router.push(url)
-      } else {
-        // For future event types, add their specific edit routes here
-        console.warn('Edit functionality for this event type is not implemented yet')
       }
-    }
+    },
+    [router]
+  )
 
-    const handleDeleteClick = (eventId: string) => {
-      setDeletingId(eventId)
-      setDeleteDialogOpen(true)
-    }
-
-    const handleDeleteConfirm = async () => {
-      if (!deletingId) return
-
-      setIsDeleting(true)
-      try {
-        let endpoint = ''
-        if (config.type === 'period') {
-          endpoint = `/api/period-days/${deletingId}`
-        } else if (config.type === 'birth-control') {
-          endpoint = `/api/birth-control-days/${deletingId}`
-        } else if (config.type === 'irregular-physical') {
-          endpoint = `/api/irregular-physical-days/${deletingId}`
-        } else if (config.type === 'normal-physical') {
-          endpoint = `/api/normal-physical-days/${deletingId}`
-        } else if (config.type === 'migraine') {
-          endpoint = `/api/migraines/${deletingId}`
-        }
-
-        const { data: deletedItem, error } = await apiFetch(endpoint, {
-          method: 'DELETE',
-        })
-
-        if (error || !deletedItem) {
-          // Error toast is automatically shown by apiFetch
-          throw new Error(error || `Failed to delete ${config.label.toLowerCase()}`)
-        }
-
-        showSuccessToast(`${config.label} deleted successfully`)
-        setDeleteDialogOpen(false)
-        fetchData() // Refresh the calendar data
-      } catch (error) {
-        console.error(`Error deleting ${config.label.toLowerCase()}:`, error)
-        // Error toast is already shown by apiFetch or our custom error above
-      } finally {
-        setIsDeleting(false)
-        setDeletingId(null)
+  const handleDelete = React.useCallback(
+    async (eventId: string, eventType: EventType) => {
+      const endpointPrefixes: Record<EventType, string> = {
+        period: '/api/period-days',
+        'birth-control': '/api/birth-control-days',
+        'irregular-physical': '/api/irregular-physical-days',
+        'normal-physical': '/api/normal-physical-days',
+        migraine: '/api/migraines',
       }
-    }
+      const endpoint = `${endpointPrefixes[eventType]}/${eventId}`
+      const label = eventTypeConfigs.find((c) => c.type === eventType)?.label ?? eventType
 
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Icon className={`h-3 w-3 ${config.color}`} />
-          <span className="text-xs font-medium">{config.label}</span>
-        </div>
+      const { data: deletedItem, error } = await apiFetch(endpoint, {
+        method: 'DELETE',
+      })
 
-        {!config.implemented ? (
-          <div className="text-xs text-muted-foreground ml-5">Coming soon</div>
-        ) : hasEvents ? (
-          <div className="space-y-2">
-            {config.type === 'period' &&
-              events.map((event) => {
-                const periodDay = event as PeriodDay
-                return (
-                  <Card key={periodDay.id} className="p-3">
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="flex-1 space-y-1">
-                        <div className="text-xs">
-                          <span className="text-muted-foreground">Flow: </span>
-                          <span className="capitalize">
-                            {periodDay.flow === 'SuperHeavy'
-                              ? 'Super Heavy'
-                              : periodDay.flow.toLowerCase()}
-                          </span>
-                        </div>
-                        <div className="text-xs">
-                          <span className="text-muted-foreground">Color: </span>
-                          <span className="capitalize">{periodDay.color.toLowerCase()}</span>
-                        </div>
-                        {periodDay.notes && (
-                          <div className="text-xs">
-                            <span className="text-muted-foreground">Notes: </span>
-                            <span>{periodDay.notes}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleEdit(periodDay.id, config.type)}
-                        >
-                          <PencilIcon className="h-3 w-3" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleDeleteClick(periodDay.id)}
-                        >
-                          <Trash2Icon className="h-3 w-3" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                )
-              })}
-            {config.type === 'birth-control' &&
-              events.map((event) => {
-                const bcDay = event as BirthControlDayWithType
-                return (
-                  <Card key={bcDay.id} className="p-3">
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="flex-1 space-y-1">
-                        <div className="text-xs">
-                          <span className="text-muted-foreground">Type: </span>
-                          <span>{bcDay.type.name}</span>
-                        </div>
-                        {(bcDay.type.vaginalRingInsertion || bcDay.type.vaginalRingRemoval) && (
-                          <div className="flex gap-2">
-                            {bcDay.type.vaginalRingInsertion && (
-                              <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                                Ring Insertion
-                              </span>
-                            )}
-                            {bcDay.type.vaginalRingRemoval && (
-                              <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-700/10">
-                                Ring Removal
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        {bcDay.notes && (
-                          <div className="text-xs">
-                            <span className="text-muted-foreground">Notes: </span>
-                            <span>{bcDay.notes}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleEdit(bcDay.id, config.type)}
-                        >
-                          <PencilIcon className="h-3 w-3" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleDeleteClick(bcDay.id)}
-                        >
-                          <Trash2Icon className="h-3 w-3" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                )
-              })}
-            {config.type === 'irregular-physical' &&
-              events.map((event) => {
-                const ipDay = event as IrregularPhysicalDayWithType
-                return (
-                  <Card key={ipDay.id} className="p-3">
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="flex-1 space-y-1">
-                        <div className="text-xs">
-                          <span className="text-muted-foreground">Type: </span>
-                          <span>{ipDay.type.name}</span>
-                        </div>
-                        {ipDay.notes && (
-                          <div className="text-xs">
-                            <span className="text-muted-foreground">Notes: </span>
-                            <span>{ipDay.notes}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleEdit(ipDay.id, config.type)}
-                        >
-                          <PencilIcon className="h-3 w-3" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleDeleteClick(ipDay.id)}
-                        >
-                          <Trash2Icon className="h-3 w-3" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                )
-              })}
-            {config.type === 'normal-physical' &&
-              events.map((event) => {
-                const npDay = event as NormalPhysicalDayWithType
-                return (
-                  <Card key={npDay.id} className="p-3">
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="flex-1 space-y-1">
-                        <div className="text-xs">
-                          <span className="text-muted-foreground">Type: </span>
-                          <span>{npDay.type.name}</span>
-                        </div>
-                        {npDay.notes && (
-                          <div className="text-xs">
-                            <span className="text-muted-foreground">Notes: </span>
-                            <span>{npDay.notes}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleEdit(npDay.id, config.type)}
-                        >
-                          <PencilIcon className="h-3 w-3" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleDeleteClick(npDay.id)}
-                        >
-                          <Trash2Icon className="h-3 w-3" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                )
-              })}
-            {config.type === 'migraine' &&
-              events.map((event) => (
-                <MigraineCard
-                  key={event.id}
-                  migraine={event as MigraineWithRelationships}
-                  onEdit={(id) => handleEdit(id, config.type)}
-                  onDelete={handleDeleteClick}
-                />
-              ))}
-          </div>
-        ) : (
-          <div className="text-xs text-muted-foreground ml-5">
-            No {config.label.toLowerCase()} events
-          </div>
-        )}
+      if (error || !deletedItem) {
+        throw new Error(error || `Failed to delete ${label.toLowerCase()}`)
+      }
 
-        <DeleteConfirmationDialog
-          open={deleteDialogOpen}
-          onOpenChange={setDeleteDialogOpen}
-          onConfirm={handleDeleteConfirm}
-          title={`Delete ${config.label}`}
-          description={`Are you sure you want to delete this ${config.label.toLowerCase()}? This action cannot be undone.`}
-          isDeleting={isDeleting}
-        />
-      </div>
-    )
-  }
+      showSuccessToast(`${label} deleted successfully`)
+      fetchData()
+    },
+    [fetchData]
+  )
 
   return (
     <Card className="w-fit">
@@ -1094,8 +1120,14 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
             <>
               {/* Events for Selected Date */}
               <div className="space-y-3">
-                {eventTypeConfigs.map((config) => (
-                  <EventSection key={config.type} config={config} selectedDate={date} />
+                {visibleEventTypeConfigs.map((config) => (
+                  <EventSection
+                    key={config.type}
+                    config={config}
+                    events={getEventsForDate(date, config.type)}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
                 ))}
               </div>
 
@@ -1117,25 +1149,26 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
                     </span>
                   </div>
                 )}
-                {cycles.length < 3 && (
+                {sex !== 'Male' && cycles.length < 3 && (
                   <div className="text-xs text-muted-foreground p-2 bg-muted rounded-md">
                     Add {3 - cycles.length} more cycle{3 - cycles.length !== 1 ? 's' : ''} to see
                     predictions
                   </div>
                 )}
-                {ringPredictions && ringPredictions.basedOnEvents === 0 && (
+                {sex !== 'Male' && ringPredictions && ringPredictions.basedOnEvents === 0 && (
                   <div className="text-xs text-muted-foreground p-2 bg-muted rounded-md">
                     Add birth control ring events to see ring predictions
                   </div>
                 )}
-                {ringPredictions &&
+                {sex !== 'Male' &&
+                  ringPredictions &&
                   ringPredictions.basedOnEvents > 0 &&
                   !ringPredictions.prediction && (
                     <div className="text-xs text-muted-foreground p-2 bg-muted rounded-md">
                       Configure ring schedule in settings to see ring predictions
                     </div>
                   )}
-                {periodDays.length === 0 && (
+                {sex !== 'Male' && periodDays.length === 0 && (
                   <div className="text-xs text-muted-foreground p-2 bg-muted rounded-md">
                     No events tracked yet. Click the + button to add your first event.
                   </div>

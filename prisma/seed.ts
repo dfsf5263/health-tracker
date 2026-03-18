@@ -1,5 +1,5 @@
-import { PrismaClient, Flow, Color } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
+import { Color, Flow, PrismaClient } from '@prisma/client'
 import { hashPassword } from 'better-auth/crypto'
 
 const prisma = new PrismaClient({
@@ -209,13 +209,16 @@ async function seedE2EUser() {
 
   const user = await prisma.user.upsert({
     where: { email },
-    update: {},
+    update: {
+      sex: 'Female',
+    },
     create: {
       email,
       name: 'E2E Test User',
       firstName: 'E2E',
       lastName: 'User',
       emailVerified: true,
+      sex: 'Female',
       daysWithBirthControlRing: 21,
       daysWithoutBirthControlRing: 7,
       averageCycleLength: 28,

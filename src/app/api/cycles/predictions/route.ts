@@ -52,6 +52,18 @@ export const GET = withApiLogging(async (request: NextRequest) => {
       } as z.ZodError)
     }
 
+    // Return empty predictions for Male users
+    const userRecord = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { sex: true },
+    })
+    if (!userRecord) {
+      return ApiError.notFound('User')
+    }
+    if (userRecord.sex === 'Male') {
+      return NextResponse.json({ predictions: [], model, basedOnCycles: 0 })
+    }
+
     // Fetch user's cycles
     const cycles = await prisma.cycle.findMany({
       where: { userId: user.id },

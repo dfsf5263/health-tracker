@@ -40,6 +40,7 @@ describe('GET /api/cycles/predictions', () => {
 
   it('returns predictions with default params', async () => {
     mockRequireAuth.mockResolvedValue(mockAuthContext())
+    db.user.findUnique.mockResolvedValue({ sex: 'Female' } as never)
     const fakeCycles = [{ id: 'c1', startDate: new Date('2024-01-01'), userId: 'test-user-id-123' }]
     db.cycle.findMany.mockResolvedValue(fakeCycles as never)
     mockPredictCycles.mockReturnValue({
@@ -55,6 +56,7 @@ describe('GET /api/cycles/predictions', () => {
 
   it('passes custom count and model', async () => {
     mockRequireAuth.mockResolvedValue(mockAuthContext())
+    db.user.findUnique.mockResolvedValue({ sex: 'Female' } as never)
     db.cycle.findMany.mockResolvedValue([{ id: 'c1' }] as never)
     mockPredictCycles.mockReturnValue({ predictions: [] } as never)
 
@@ -79,6 +81,7 @@ describe('GET /api/cycles/predictions', () => {
 
   it('returns 404 when no cycles exist', async () => {
     mockRequireAuth.mockResolvedValue(mockAuthContext())
+    db.user.findUnique.mockResolvedValue({ sex: 'Female' } as never)
     db.cycle.findMany.mockResolvedValue([])
 
     const res = await GET(makeRequest())
@@ -87,6 +90,7 @@ describe('GET /api/cycles/predictions', () => {
 
   it('returns 400 when prediction throws', async () => {
     mockRequireAuth.mockResolvedValue(mockAuthContext())
+    db.user.findUnique.mockResolvedValue({ sex: 'Female' } as never)
     db.cycle.findMany.mockResolvedValue([{ id: 'c1' }] as never)
     mockPredictCycles.mockImplementation(() => {
       throw new Error('Not enough data')
@@ -96,5 +100,25 @@ describe('GET /api/cycles/predictions', () => {
     expect(res.status).toBe(400)
     const data = await res.json()
     expect(data.details[0].message).toBe('Not enough data')
+  })
+
+  it('returns empty predictions for Male user', async () => {
+    mockRequireAuth.mockResolvedValue(mockAuthContext())
+    db.user.findUnique.mockResolvedValue({ sex: 'Male' } as never)
+
+    const res = await GET(makeRequest())
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data).toEqual({ predictions: [], model: 'simple_average', basedOnCycles: 0 })
+    expect(mockPredictCycles).not.toHaveBeenCalled()
+    expect(db.cycle.findMany).not.toHaveBeenCalled()
+  })
+
+  it('returns 404 when user not found', async () => {
+    mockRequireAuth.mockResolvedValue(mockAuthContext())
+    db.user.findUnique.mockResolvedValue(null)
+
+    const res = await GET(makeRequest())
+    expect(res.status).toBe(404)
   })
 })

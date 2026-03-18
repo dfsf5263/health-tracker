@@ -163,6 +163,27 @@ function AddEventPageInner({
     flowHistory: [0],
   })
 
+  // Sex state — used to filter event types and skip period status in migraine wizard
+  const [sex, setSex] = useState('')
+
+  React.useEffect(() => {
+    const loadProfile = async () => {
+      const { data } = await apiFetch<{ sex: string }>('/api/user/profile')
+      if (data) {
+        setSex(data.sex)
+      }
+    }
+    loadProfile()
+  }, [])
+
+  const visibleEventTypes = React.useMemo(
+    () =>
+      sex === 'Male'
+        ? eventTypes.filter((t) => t.id !== 'period' && t.id !== 'birth-control')
+        : eventTypes,
+    [sex]
+  )
+
   // Birth control state
   const [birthControlTypes, setBirthControlTypes] = useState<BirthControlType[]>([])
   const [loadingBirthControlTypes, setLoadingBirthControlTypes] = useState(false)
@@ -336,7 +357,7 @@ function AddEventPageInner({
     // For migraine flow (indices 5-18), calculate based on step position
     if (flowState.currentFlow === 'migraine' && current >= 5 && current <= 18) {
       const migraineStep = current - 5 // Convert to 0-based migraine step (0-13)
-      const totalMigraineSteps = 14
+      const totalMigraineSteps = sex === 'Male' ? 13 : 14
       return Math.round(((migraineStep + 1) / totalMigraineSteps) * 100)
     }
 
@@ -575,7 +596,7 @@ function AddEventPageInner({
                   <div className="text-center space-y-6 py-4">
                     <h2 className="text-2xl font-semibold">What would you like to track?</h2>
                     <div className="grid gap-4 max-w-md mx-auto">
-                      {eventTypes.map((type) => {
+                      {visibleEventTypes.map((type) => {
                         const Icon = type.icon
                         return (
                           <Button
@@ -843,9 +864,15 @@ function AddEventPageInner({
                       }
                     }}
                     onContinue={() => {
-                      // Continue to period status step
-                      migraineContext.navigateToStep(7)
-                      api?.scrollTo(12) // Index 12 is the period status step
+                      if (sex === 'Male') {
+                        // Skip period status step for Male users
+                        migraineContext.navigateToStep(8)
+                        api?.scrollTo(13) // Index 13 is the medications step
+                      } else {
+                        // Continue to period status step
+                        migraineContext.navigateToStep(7)
+                        api?.scrollTo(12) // Index 12 is the period status step
+                      }
                     }}
                   />
                 </div>

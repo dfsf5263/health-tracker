@@ -1,10 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { authClient } from '@/lib/auth-client'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { authClient } from '@/lib/auth-client'
 import { apiFetch, showSuccessToast } from '@/lib/http-utils'
 
 interface UserProfile {
@@ -12,6 +19,7 @@ interface UserProfile {
   lastName: string | null
   name: string | null
   email: string
+  sex: string
   daysWithoutBirthControlRing?: number
   daysWithBirthControlRing?: number
 }
@@ -22,6 +30,7 @@ export function ProfileForm() {
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  const [sex, setSex] = useState<'Male' | 'Female' | ''>('')
   const [daysWithoutBirthControlRing, setDaysWithoutBirthControlRing] = useState<number>()
   const [daysWithBirthControlRing, setDaysWithBirthControlRing] = useState<number>()
   const [isLoading, setIsLoading] = useState(false)
@@ -42,6 +51,7 @@ export function ProfileForm() {
 
       setFirstName(data.firstName || '')
       setLastName(data.lastName || '')
+      setSex(data.sex === 'Male' || data.sex === 'Female' ? data.sex : '')
       setDaysWithoutBirthControlRing(data.daysWithoutBirthControlRing || undefined)
       setDaysWithBirthControlRing(data.daysWithBirthControlRing || undefined)
       setIsLoadingProfile(false)
@@ -61,6 +71,7 @@ export function ProfileForm() {
         body: JSON.stringify({
           firstName: firstName.trim() || undefined,
           lastName: lastName.trim() || undefined,
+          sex: sex || undefined,
           daysWithoutBirthControlRing: daysWithoutBirthControlRing || undefined,
           daysWithBirthControlRing: daysWithBirthControlRing || undefined,
         }),
@@ -76,6 +87,7 @@ export function ProfileForm() {
       // Update local state with response data
       setFirstName(data.firstName || '')
       setLastName(data.lastName || '')
+      setSex(data.sex === 'Male' || data.sex === 'Female' ? data.sex : '')
       setDaysWithoutBirthControlRing(data.daysWithoutBirthControlRing || undefined)
       setDaysWithBirthControlRing(data.daysWithBirthControlRing || undefined)
 
@@ -117,44 +129,72 @@ export function ProfileForm() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="daysWithoutRing">Days without birth control ring</Label>
-            <Input
-              id="daysWithoutRing"
-              type="number"
-              min="1"
-              max="10"
-              value={daysWithoutBirthControlRing || ''}
-              onChange={(e) => {
-                const value = e.target.value ? parseInt(e.target.value, 10) : undefined
-                setDaysWithoutBirthControlRing(value)
-              }}
-              placeholder="Enter number of days"
-              disabled={isLoadingProfile || isLoading}
-            />
-            <p className="text-xs text-muted-foreground">
-              Number of days to keep the ring out during your cycle
-            </p>
-          </div>
+          {sex !== 'Male' && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="daysWithoutRing">Days without birth control ring</Label>
+                <Input
+                  id="daysWithoutRing"
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={daysWithoutBirthControlRing || ''}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseInt(e.target.value, 10) : undefined
+                    setDaysWithoutBirthControlRing(value)
+                  }}
+                  placeholder="Enter number of days"
+                  disabled={isLoadingProfile || isLoading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Number of days to keep the ring out during your cycle
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="daysWithRing">Days with birth control ring</Label>
+                <Input
+                  id="daysWithRing"
+                  type="number"
+                  min="1"
+                  max="35"
+                  value={daysWithBirthControlRing || ''}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseInt(e.target.value, 10) : undefined
+                    setDaysWithBirthControlRing(value)
+                  }}
+                  placeholder="Enter number of days"
+                  disabled={isLoadingProfile || isLoading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Number of days to keep the ring in during your cycle
+                </p>
+              </div>
+            </>
+          )}
 
           <div className="space-y-2">
-            <Label htmlFor="daysWithRing">Days with birth control ring</Label>
-            <Input
-              id="daysWithRing"
-              type="number"
-              min="1"
-              max="35"
-              value={daysWithBirthControlRing || ''}
-              onChange={(e) => {
-                const value = e.target.value ? parseInt(e.target.value, 10) : undefined
-                setDaysWithBirthControlRing(value)
+            <Label htmlFor="sex">Biological Sex</Label>
+            <Select
+              value={sex}
+              onValueChange={(value) => {
+                const newSex = value as 'Male' | 'Female'
+                setSex(newSex)
+                if (newSex === 'Male') {
+                  setDaysWithoutBirthControlRing(undefined)
+                  setDaysWithBirthControlRing(undefined)
+                }
               }}
-              placeholder="Enter number of days"
               disabled={isLoadingProfile || isLoading}
-            />
-            <p className="text-xs text-muted-foreground">
-              Number of days to keep the ring in during your cycle
-            </p>
+            >
+              <SelectTrigger id="sex">
+                <SelectValue placeholder="Select your sex" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Male">Male</SelectItem>
+                <SelectItem value="Female">Female</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

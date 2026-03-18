@@ -24,6 +24,7 @@ export const GET = withApiLogging(async (request: NextRequest) => {
     const userWithSettings = await prisma.user.findUnique({
       where: { id: user.id },
       select: {
+        sex: true,
         daysWithBirthControlRing: true,
         daysWithoutBirthControlRing: true,
       },
@@ -31,6 +32,11 @@ export const GET = withApiLogging(async (request: NextRequest) => {
 
     if (!userWithSettings) {
       return ApiError.notFound('User')
+    }
+
+    // Return empty predictions for Male users
+    if (userWithSettings.sex === 'Male') {
+      return NextResponse.json({ prediction: null, basedOnEvents: 0, userSettings: {} })
     }
 
     // Fetch birth control events with their types, filtered to ring events only
