@@ -91,10 +91,24 @@ describe('DELETE /api/normal-physical-types/[id]', () => {
       id: TYPE_ID,
       userId: 'test-user-id-123',
     } as never)
+    db.normalPhysicalDay.count.mockResolvedValue(0 as never)
     db.normalPhysicalType.delete.mockResolvedValue({} as never)
 
     const res = await DELETE(makeRequest('DELETE'), makeParams())
     expect(res.status).toBe(200)
+  })
+
+  it('returns 409 when type is in use', async () => {
+    mockRequireAuth.mockResolvedValue(mockAuthContext())
+    db.normalPhysicalType.findFirst.mockResolvedValue({
+      id: TYPE_ID,
+      userId: 'test-user-id-123',
+    } as never)
+    db.normalPhysicalDay.count.mockResolvedValue(3 as never)
+
+    const res = await DELETE(makeRequest('DELETE'), makeParams())
+    expect(res.status).toBe(409)
+    expect(db.normalPhysicalType.delete).not.toHaveBeenCalled()
   })
 
   it('returns 404 when type not found', async () => {

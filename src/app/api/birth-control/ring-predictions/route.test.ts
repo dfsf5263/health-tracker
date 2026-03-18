@@ -42,8 +42,16 @@ describe('GET /api/birth-control/ring-predictions', () => {
       { id: 'e1', date: new Date('2024-03-01'), type: { vaginalRingInsertion: true } },
     ] as never)
     mockPredictNextRingEvent.mockReturnValue({
-      predictedDate: new Date('2024-03-22'),
-      eventType: 'removal',
+      prediction: {
+        predictedDate: new Date('2024-03-22'),
+        eventType: 'removal',
+        confidence: 0.85,
+      },
+      basedOnEvents: 1,
+      userSettings: {
+        daysWithRing: 21,
+        daysWithoutRing: 7,
+      },
     } as never)
 
     const res = await GET(makeRequest())
