@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRouter } from 'next/navigation'
@@ -33,6 +33,10 @@ describe('SignUpForm', () => {
     vi.clearAllMocks()
     push = vi.fn()
     mockRouter.mockReturnValue({ push } as never)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('renders all form fields', () => {
