@@ -289,10 +289,7 @@ export default function MigraineBreakdownPage() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart
-                  data={data.topTriggers.slice(0, 8)}
-                  layout="vertical"
-                >
+                <BarChart data={data.topTriggers.slice(0, 8)} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" allowDecimals={false} />
                   <YAxis type="category" dataKey="name" width={75} tick={{ fontSize: 12 }} />

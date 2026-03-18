@@ -91,6 +91,9 @@ export function ProfileForm() {
       setDaysWithoutBirthControlRing(data.daysWithoutBirthControlRing || undefined)
       setDaysWithBirthControlRing(data.daysWithBirthControlRing || undefined)
 
+      // Notify other components (e.g. sidebar) that the profile changed
+      window.dispatchEvent(new CustomEvent('profile-updated', { detail: { sex: data.sex } }))
+
       // Refresh the session to update the sidebar display
       await refetch()
     } catch (error) {

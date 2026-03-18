@@ -13,15 +13,7 @@ const RANGE_MAP: Record<string, number> = {
   '3y': 1095,
 }
 
-const DAY_NAMES = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-]
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 function countByName(
   migraines: MigraineWithRelations[],
@@ -131,7 +123,8 @@ export const GET = withApiLogging(async (request: NextRequest) => {
       for (const m of migraines) {
         const d = new Date(m.startDateTime)
         const weekStart = new Date(d)
-        weekStart.setDate(d.getDate() - d.getDay())
+        weekStart.setUTCDate(d.getUTCDate() - d.getUTCDay())
+        weekStart.setUTCHours(0, 0, 0, 0)
         const key = weekStart.toISOString().split('T')[0]
         const arr = weekMap.get(key) ?? []
         arr.push(m.painLevel)

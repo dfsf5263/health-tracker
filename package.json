@@ -20,7 +20,8 @@
     "postinstall": "test -d .git && simple-git-hooks || true"
   },
   "simple-git-hooks": {
-    "pre-commit": "npm run lockfile-check"
+    "pre-commit": "npm run format && git add -u && npm run lockfile-check",
+    "pre-push": "npm run check && npm run test"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

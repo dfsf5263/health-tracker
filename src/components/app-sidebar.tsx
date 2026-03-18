@@ -5,6 +5,7 @@ import {
   Brain,
   Calendar,
   ChevronRight,
+  Orbit,
   Settings,
   Shield,
   User,
@@ -41,6 +42,8 @@ const data = {
       url: '/dashboard',
       icon: Calendar,
     },
+  ],
+  manage: [
     {
       title: 'Manage Event Types',
       url: '/dashboard/manage-event-types',
@@ -77,13 +80,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }
     }
     loadProfile()
+
+    const handleProfileUpdated = (e: Event) => {
+      const detail = (e as CustomEvent<{ sex: string }>).detail
+      if (detail?.sex) {
+        setSex(detail.sex)
+      }
+    }
+    window.addEventListener('profile-updated', handleProfileUpdated)
+    return () => window.removeEventListener('profile-updated', handleProfileUpdated)
   }, [])
 
   const analyticsItems = useMemo(
     () => [
       { name: 'Migraine Breakdown', url: '/dashboard/analytics/migraines', icon: Brain },
       ...(sex !== 'Male'
-        ? [{ name: 'Cycle Tracking', url: '/dashboard/analytics/cycle-tracking', icon: Activity }]
+        ? [{ name: 'Cycle Tracking', url: '/dashboard/analytics/cycle-tracking', icon: Orbit }]
         : []),
     ],
     [sex]
@@ -112,6 +124,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain items={data.navMain} />
         <NavGroup title="Analytics" items={analyticsItems} />
+        <NavMain items={data.manage} />
 
         {/* Collapsible Settings Section */}
         <Collapsible defaultOpen className="group/collapsible">

@@ -65,6 +65,19 @@ function EditMigraineContent() {
   const [migraineData, setMigraineData] = useState<MigraineWithRelationships | null>(null)
   const fetchedRef = React.useRef(false)
 
+  // Sex state — used to skip period status step for Male users
+  const [sex, setSex] = useState('')
+
+  React.useEffect(() => {
+    const loadProfile = async () => {
+      const { data } = await apiFetch<{ sex: string }>('/api/user/profile')
+      if (data) {
+        setSex(data.sex)
+      }
+    }
+    loadProfile()
+  }, [])
+
   const migraineId = searchParams.get('id')
 
   // Transform database migraine to form data
@@ -250,9 +263,11 @@ function EditMigraineContent() {
   const calculateEditProgress = (): number => {
     if (current < 5) return 0
 
-    const migraineStep = current - 5 // Convert to 0-based migraine step (0-13)
-    const totalMigraineSteps = 14
-    return Math.round(((migraineStep + 1) / totalMigraineSteps) * 100)
+    const migraineStep = migraineContext.currentStep ?? 0
+    const totalMigraineSteps = sex === 'Male' ? 13 : 14
+    // Male users skip step 7 (Period Status), so steps 8-13 are logically positions 7-12
+    const adjustedStep = sex === 'Male' && migraineStep >= 8 ? migraineStep - 1 : migraineStep
+    return Math.round(((adjustedStep + 1) / totalMigraineSteps) * 100)
   }
 
   if (isLoading) {
@@ -424,9 +439,15 @@ function EditMigraineContent() {
                       }
                     }}
                     onContinue={() => {
-                      // Continue to period status step
-                      migraineContext.navigateToStep(7)
-                      api?.scrollTo(12) // Index 12 is the period status step
+                      if (sex === 'Male') {
+                        // Skip period status step for Male users
+                        migraineContext.navigateToStep(8)
+                        api?.scrollTo(13) // Index 13 is the medications step
+                      } else {
+                        // Continue to period status step
+                        migraineContext.navigateToStep(7)
+                        api?.scrollTo(12) // Index 12 is the period status step
+                      }
                     }}
                   />
                 </div>

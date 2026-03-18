@@ -84,8 +84,8 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
           <p className="text-sm text-foreground font-medium">What is your biological sex?</p>
           <p className="text-xs text-muted-foreground">
             This helps us personalise the features shown to you — period tracking, birth control
-            reminders, and cycle predictions are only shown for female users. You can update
-            this any time in Profile Settings.
+            reminders, and cycle predictions are only shown for female users. You can update this
+            any time in Profile Settings.
           </p>
           <RadioGroup
             value={sex}
@@ -96,7 +96,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
               htmlFor="sex-male"
               className={cn(
                 'flex cursor-pointer items-center gap-4 rounded-lg border px-4 py-3 transition-colors hover:bg-accent',
-                sex === 'Male' && 'border-primary bg-primary/5',
+                sex === 'Male' && 'border-primary bg-primary/5'
               )}
             >
               <RadioGroupItem value="Male" id="sex-male" className="sr-only" />
@@ -112,7 +112,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
               htmlFor="sex-female"
               className={cn(
                 'flex cursor-pointer items-center gap-4 rounded-lg border px-4 py-3 transition-colors hover:bg-accent',
-                sex === 'Female' && 'border-primary bg-primary/5',
+                sex === 'Female' && 'border-primary bg-primary/5'
               )}
             >
               <RadioGroupItem value="Female" id="sex-female" className="sr-only" />

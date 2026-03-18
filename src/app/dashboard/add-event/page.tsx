@@ -354,11 +354,13 @@ function AddEventPageInner({
       return 0 // Event selection shows no progress
     }
 
-    // For migraine flow (indices 5-18), calculate based on step position
-    if (flowState.currentFlow === 'migraine' && current >= 5 && current <= 18) {
-      const migraineStep = current - 5 // Convert to 0-based migraine step (0-13)
+    // For migraine flow, calculate based on logical step position from migraine context
+    if (flowState.currentFlow === 'migraine') {
+      const migraineStep = migraineContext.currentStep ?? 0
       const totalMigraineSteps = sex === 'Male' ? 13 : 14
-      return Math.round(((migraineStep + 1) / totalMigraineSteps) * 100)
+      // Male users skip step 7 (Period Status), so steps 8-13 are logically positions 7-12
+      const adjustedStep = sex === 'Male' && migraineStep >= 8 ? migraineStep - 1 : migraineStep
+      return Math.round(((adjustedStep + 1) / totalMigraineSteps) * 100)
     }
 
     // For other single-step flows, show 50%

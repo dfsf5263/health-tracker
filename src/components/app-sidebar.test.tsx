@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('next/navigation', () => ({
@@ -29,6 +29,7 @@ import { apiFetch } from '@/lib/http-utils'
 import { AppSidebar } from './app-sidebar'
 
 const mockApiFetch = vi.mocked(apiFetch)
+const mockResponse = new Response(null, { status: 200 })
 
 function renderSidebar() {
   return render(
@@ -44,7 +45,7 @@ describe('AppSidebar', () => {
   })
 
   it('shows Migraine Breakdown for Female users', async () => {
-    mockApiFetch.mockResolvedValue({ data: { sex: 'Female' }, error: null })
+    mockApiFetch.mockResolvedValue({ data: { sex: 'Female' }, error: null, response: mockResponse })
     renderSidebar()
 
     await waitFor(() => {
@@ -53,7 +54,7 @@ describe('AppSidebar', () => {
   })
 
   it('shows Cycle Tracking for Female users', async () => {
-    mockApiFetch.mockResolvedValue({ data: { sex: 'Female' }, error: null })
+    mockApiFetch.mockResolvedValue({ data: { sex: 'Female' }, error: null, response: mockResponse })
     renderSidebar()
 
     await waitFor(() => {
@@ -62,7 +63,7 @@ describe('AppSidebar', () => {
   })
 
   it('shows Migraine Breakdown for Male users', async () => {
-    mockApiFetch.mockResolvedValue({ data: { sex: 'Male' }, error: null })
+    mockApiFetch.mockResolvedValue({ data: { sex: 'Male' }, error: null, response: mockResponse })
     renderSidebar()
 
     await waitFor(() => {
@@ -71,7 +72,7 @@ describe('AppSidebar', () => {
   })
 
   it('hides Cycle Tracking for Male users', async () => {
-    mockApiFetch.mockResolvedValue({ data: { sex: 'Male' }, error: null })
+    mockApiFetch.mockResolvedValue({ data: { sex: 'Male' }, error: null, response: mockResponse })
     renderSidebar()
 
     await waitFor(() => {
@@ -81,7 +82,7 @@ describe('AppSidebar', () => {
   })
 
   it('shows Cycle Tracking when sex is empty (default)', async () => {
-    mockApiFetch.mockResolvedValue({ data: { sex: '' }, error: null })
+    mockApiFetch.mockResolvedValue({ data: { sex: '' }, error: null, response: mockResponse })
     renderSidebar()
 
     await waitFor(() => {
@@ -90,11 +91,40 @@ describe('AppSidebar', () => {
   })
 
   it('renders Analytics group title', async () => {
-    mockApiFetch.mockResolvedValue({ data: { sex: 'Female' }, error: null })
+    mockApiFetch.mockResolvedValue({ data: { sex: 'Female' }, error: null, response: mockResponse })
     renderSidebar()
 
     await waitFor(() => {
       expect(screen.getByText('Analytics')).toBeInTheDocument()
+    })
+  })
+
+  it('shows Cycle Tracking when apiFetch returns no data', async () => {
+    mockApiFetch.mockResolvedValue({ data: null, error: 'failed', response: mockResponse })
+    renderSidebar()
+
+    // With no data, sex stays '' which is not 'Male', so Cycle Tracking shows
+    await waitFor(() => {
+      expect(screen.getByText('Migraine Breakdown')).toBeInTheDocument()
+    })
+    expect(screen.getByText('Cycle Tracking')).toBeInTheDocument()
+  })
+
+  it('updates sidebar when profile-updated event is dispatched', async () => {
+    mockApiFetch.mockResolvedValue({ data: { sex: 'Female' }, error: null, response: mockResponse })
+    renderSidebar()
+
+    await waitFor(() => {
+      expect(screen.getByText('Cycle Tracking')).toBeInTheDocument()
+    })
+
+    // Simulate profile update to Male
+    act(() => {
+      window.dispatchEvent(new CustomEvent('profile-updated', { detail: { sex: 'Male' } }))
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText('Cycle Tracking')).not.toBeInTheDocument()
     })
   })
 })

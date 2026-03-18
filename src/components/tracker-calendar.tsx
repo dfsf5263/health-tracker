@@ -671,7 +671,7 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
   const [normalPhysicalDays, setNormalPhysicalDays] = React.useState<NormalPhysicalDayWithType[]>(
     []
   )
-  const [migraines, setMigraines] = React.useState<Migraine[]>([])
+  const [migraines, setMigraines] = React.useState<MigraineWithRelationships[]>([])
   const [predictions, setPredictions] = React.useState<PredictionResult | null>(null)
   const [ringPredictions, setRingPredictions] = React.useState<RingPredictionResult | null>(null)
   const [sex, setSex] = React.useState('')
@@ -689,29 +689,29 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
     setIsLoading(true)
     onLoadingChange?.(true)
     try {
-      // Fetch cycles, period days, birth control days, irregular physical days, normal physical days, migraines, and user profile in parallel
-      const [
-        { data: cyclesData, error: cyclesError },
-        { data: periodDaysData, error: periodDaysError },
-        { data: birthControlDaysData, error: birthControlDaysError },
-        { data: irregularPhysicalDaysData, error: irregularPhysicalDaysError },
-        { data: normalPhysicalDaysData, error: normalPhysicalDaysError },
-        { data: migrainesData, error: migrainesError },
-        { data: profileData },
-      ] = await Promise.all([
-        apiFetch<Cycle[]>('/api/cycles'),
-        apiFetch<PeriodDay[]>('/api/period-days'),
-        apiFetch<BirthControlDayWithType[]>('/api/birth-control-days'),
-        apiFetch<IrregularPhysicalDayWithType[]>('/api/irregular-physical-days'),
-        apiFetch<NormalPhysicalDayWithType[]>('/api/normal-physical-days'),
-        apiFetch<MigraineWithRelationships[]>('/api/migraines'),
-        apiFetch<{ sex: string }>('/api/user/profile'),
-      ])
-
+      // Phase 1: fetch profile to determine sex before deciding which endpoints to call
+      const { data: profileData } = await apiFetch<{ sex: string }>('/api/user/profile')
       const sexValue = profileData?.sex ?? ''
       setSex(sexValue)
 
       if (sexValue !== 'Male') {
+        // Phase 2 (Female/unknown): fetch all endpoints including female-only ones
+        const [
+          { data: cyclesData, error: cyclesError },
+          { data: periodDaysData, error: periodDaysError },
+          { data: birthControlDaysData, error: birthControlDaysError },
+          { data: irregularPhysicalDaysData, error: irregularPhysicalDaysError },
+          { data: normalPhysicalDaysData, error: normalPhysicalDaysError },
+          { data: migrainesData, error: migrainesError },
+        ] = await Promise.all([
+          apiFetch<Cycle[]>('/api/cycles'),
+          apiFetch<PeriodDay[]>('/api/period-days'),
+          apiFetch<BirthControlDayWithType[]>('/api/birth-control-days'),
+          apiFetch<IrregularPhysicalDayWithType[]>('/api/irregular-physical-days'),
+          apiFetch<NormalPhysicalDayWithType[]>('/api/normal-physical-days'),
+          apiFetch<MigraineWithRelationships[]>('/api/migraines'),
+        ])
+
         if (!cyclesError && cyclesData) {
           setCycles(cyclesData)
 
@@ -743,24 +743,47 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
             setRingPredictions(null)
           }
         }
+
+        if (!irregularPhysicalDaysError && irregularPhysicalDaysData) {
+          setIrregularPhysicalDays(irregularPhysicalDaysData)
+        }
+
+        if (!normalPhysicalDaysError && normalPhysicalDaysData) {
+          setNormalPhysicalDays(normalPhysicalDaysData)
+        }
+
+        if (!migrainesError && migrainesData) {
+          setMigraines(migrainesData)
+        }
       } else {
+        // Phase 2 (Male): skip female-only endpoints entirely
+        const [
+          { data: irregularPhysicalDaysData, error: irregularPhysicalDaysError },
+          { data: normalPhysicalDaysData, error: normalPhysicalDaysError },
+          { data: migrainesData, error: migrainesError },
+        ] = await Promise.all([
+          apiFetch<IrregularPhysicalDayWithType[]>('/api/irregular-physical-days'),
+          apiFetch<NormalPhysicalDayWithType[]>('/api/normal-physical-days'),
+          apiFetch<MigraineWithRelationships[]>('/api/migraines'),
+        ])
+
         setCycles([])
         setPeriodDays([])
         setBirthControlDays([])
         setPredictions(null)
         setRingPredictions(null)
-      }
 
-      if (!irregularPhysicalDaysError && irregularPhysicalDaysData) {
-        setIrregularPhysicalDays(irregularPhysicalDaysData)
-      }
+        if (!irregularPhysicalDaysError && irregularPhysicalDaysData) {
+          setIrregularPhysicalDays(irregularPhysicalDaysData)
+        }
 
-      if (!normalPhysicalDaysError && normalPhysicalDaysData) {
-        setNormalPhysicalDays(normalPhysicalDaysData)
-      }
+        if (!normalPhysicalDaysError && normalPhysicalDaysData) {
+          setNormalPhysicalDays(normalPhysicalDaysData)
+        }
 
-      if (!migrainesError && migrainesData) {
-        setMigraines(migrainesData)
+        if (!migrainesError && migrainesData) {
+          setMigraines(migrainesData)
+        }
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -825,7 +848,7 @@ export default function TrackerCalendar({ refreshTrigger, onLoadingChange }: Tra
     })
   }
 
-  const getMigraines = (day: Date): Migraine[] => {
+  const getMigraines = (day: Date): MigraineWithRelationships[] => {
     return migraines.filter((migraine) => {
       const startDate = new Date(migraine.startDateTime)
 

@@ -60,9 +60,11 @@ async function cleanupTodaysEvents(page: Page) {
 
   // Keep deleting while any trash/delete buttons exist on event cards
   // Each deletion refreshes the list, so re-query after each one
-  // eslint-disable-next-line no-constant-condition
   while (true) {
-    const deleteBtn = page.getByRole('main').getByRole('button', { name: 'Delete', exact: true }).first()
+    const deleteBtn = page
+      .getByRole('main')
+      .getByRole('button', { name: 'Delete', exact: true })
+      .first()
     if (!(await deleteBtn.isVisible({ timeout: 2000 }).catch(() => false))) break
 
     await deleteBtn.click()

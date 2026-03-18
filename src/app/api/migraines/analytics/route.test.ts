@@ -239,6 +239,42 @@ describe('GET /api/migraines/analytics', () => {
     expect(data.symptomCoOccurrence).toEqual([{ pair: 'Nausea + Sensitivity to Light', count: 2 }])
   })
 
+  it('sorts symptom co-occurrence by count descending', async () => {
+    mockRequireAuth.mockResolvedValue(mockAuthContext())
+    db.migraine.findMany.mockResolvedValue([
+      makeMigraine({
+        id: 'm1',
+        migraineMigraineSymptomTypes: [
+          { migraineSymptomType: { name: 'Nausea' } },
+          { migraineSymptomType: { name: 'Aura' } },
+          { migraineSymptomType: { name: 'Sensitivity to Light' } },
+        ],
+      }),
+      makeMigraine({
+        id: 'm2',
+        migraineMigraineSymptomTypes: [
+          { migraineSymptomType: { name: 'Nausea' } },
+          { migraineSymptomType: { name: 'Aura' } },
+        ],
+      }),
+      makeMigraine({
+        id: 'm3',
+        migraineMigraineSymptomTypes: [
+          { migraineSymptomType: { name: 'Nausea' } },
+          { migraineSymptomType: { name: 'Aura' } },
+          { migraineSymptomType: { name: 'Sensitivity to Light' } },
+        ],
+      }),
+    ] as never)
+
+    const res = await GET(makeRequest())
+    const data = await res.json()
+
+    // Aura + Nausea appears 3 times (alphabetically sorted pair key), others appear 2 times
+    expect(data.symptomCoOccurrence[0]).toEqual({ pair: 'Aura + Nausea', count: 3 })
+    expect(data.symptomCoOccurrence[1].count).toBeLessThanOrEqual(3)
+  })
+
   it('accepts range query parameter', async () => {
     mockRequireAuth.mockResolvedValue(mockAuthContext())
     db.migraine.findMany.mockResolvedValue([])

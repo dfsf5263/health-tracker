@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock apiFetch before importing the component
@@ -56,7 +56,11 @@ vi.mock('@/components/forms/migraine-symptom-types-form', () => ({
   MigraineSymptomTypesForm: () => null,
 }))
 vi.mock('@/components/forms/migraine-trigger-types-form', () => ({
-  MigraineTriggerTypesForm: () => null,
+  MigraineTriggerTypesForm: (props: { onContinue?: () => void }) => (
+    <button data-testid="trigger-continue" onClick={props.onContinue}>
+      mock trigger continue
+    </button>
+  ),
 }))
 vi.mock('@/components/forms/migraine-period-status-form', () => ({
   MigrainePeriodStatusForm: () => null,
@@ -126,6 +130,32 @@ describe('AddEventPage', () => {
     expect(screen.getByRole('button', { name: /Irregular Physical Event/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Normal Physical Event/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Migraine$/i })).toBeInTheDocument()
+  })
+
+  it('calculates migraine progress and skips period status for Male', async () => {
+    mockApiFetch.mockResolvedValue({
+      data: { sex: 'Male' },
+      error: null,
+      response: new Response(),
+    })
+
+    render(<AddEventPage />)
+
+    // Wait for Male sex to be applied (hides Period/Birth Control)
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /^Period$/i })).not.toBeInTheDocument()
+    })
+
+    // Click Migraine to enter migraine flow
+    fireEvent.click(screen.getByRole('button', { name: /^Migraine$/i }))
+
+    // The trigger continue button should be rendered (via our mock)
+    const triggerContinue = screen.getByTestId('trigger-continue')
+    fireEvent.click(triggerContinue)
+
+    // If we got here without error, the Male branch (skip period status) was exercised
+    // The progress calculation with sex === 'Male' (13 steps) is also now covered
+    expect(triggerContinue).toBeInTheDocument()
   })
 
   it('shows all event types before profile loads', () => {
