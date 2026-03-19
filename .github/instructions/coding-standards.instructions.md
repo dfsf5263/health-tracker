@@ -65,3 +65,13 @@ import { Button } from '@/components/ui/button'
 
 Required: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `APP_URL`
 Optional: `RESEND_API_KEY`, `DATABASE_URL_E2E`
+
+## Pre-Commit Checks (Copilot)
+
+Before staging any changes to git, always run the following three commands in order and verify each one succeeds before proceeding:
+
+1. `npm run format` — auto-formats all source files
+2. `npm run check` — runs lint, format check, and TypeScript typecheck
+3. `npm run test` — runs the full Vitest unit test suite
+
+Do not stage or commit if any of these commands fail. Fix all errors first, then re-run the checks.
