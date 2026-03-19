@@ -61,21 +61,15 @@ jobs:
       - name: Wait for app to be ready
         run: |
           for i in $(seq 1 30); do
-            curl -sf http://localhost:8080 > /dev/null 2>&1 && echo "App ready" && exit 0
+            curl -sf http://localhost:3000 > /dev/null 2>&1 && echo "App ready" && exit 0
             echo "Waiting... ($i/30)"
             sleep 2
           done
           echo "App did not become ready in time" && exit 1
 
       - name: Run OWASP ZAP baseline scan
-        uses: zaproxy/action-baseline@v0.13.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: http://localhost:3000
           fail_action: false
-
-      - name: Upload ZAP report
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: zap-report
-          path: report_html.html
+          artifact_name: zap-report
