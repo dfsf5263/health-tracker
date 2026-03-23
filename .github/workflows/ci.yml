@@ -6,17 +6,14 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   lint-typecheck:
     name: Lint, Format & Typecheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 25
           cache: npm
@@ -25,16 +22,16 @@ jobs:
         run: npm install -g npm@11
 
       - run: npm ci
-      - run: npx prisma generate
+      - run: npm run db:generate
       - run: npm run check
 
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 25
           cache: npm
@@ -43,7 +40,7 @@ jobs:
         run: npm install -g npm@11
 
       - run: npm ci
-      - run: npx prisma generate
+      - run: npm run db:generate
       - run: npm run test:coverage
 
       - name: Upload coverage to Codecov
@@ -82,9 +79,9 @@ jobs:
       E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 25
           cache: npm
@@ -93,17 +90,17 @@ jobs:
         run: npm install -g npm@11
 
       - run: npm ci
-      - run: npx prisma generate
-      - run: npx prisma migrate deploy
-      - run: npx prisma db seed
+      - run: npm run db:generate
+      - run: npm run db:migrate:deploy
+      - run: npm run db:seed
 
       - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+        run: npm run test:e2e:install
 
       - name: Run E2E tests
         run: npm run test:e2e
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: playwright-report
